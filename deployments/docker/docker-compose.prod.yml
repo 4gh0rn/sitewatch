@@ -1,0 +1,43 @@
+services:
+  sitewatch:
+    build:
+      context: ../../
+      dockerfile: deployments/docker/Dockerfile
+    container_name: sitewatch-prod
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount config files from host (read-only)
+      - ../../configs/config.yaml:/app/configs/config.yaml:ro
+      - ../../configs/sites.yaml:/app/configs/sites.yaml:ro
+      # Optional: Mount data directory for SQLite
+      - ../../data:/app/data
+    environment:
+      - GO_ENV=production
+      - LOG_LEVEL=info
+      # Server configuration
+      - SITEWATCH_SERVER_HOST=${SITEWATCH_SERVER_HOST:-0.0.0.0}
+      - SITEWATCH_SERVER_PORT=${SITEWATCH_SERVER_PORT:-8080}
+      # Storage configuration  
+      - SITEWATCH_STORAGE_TYPE=${SITEWATCH_STORAGE_TYPE:-memory}
+      - SITEWATCH_STORAGE_SQLITE_PATH=${SITEWATCH_STORAGE_SQLITE_PATH:-data/ping_monitor.db}
+      - SITEWATCH_STORAGE_MAX_MEMORY_LOGS=${SITEWATCH_STORAGE_MAX_MEMORY_LOGS:-1000}
+      # Metrics configuration
+      - SITEWATCH_METRICS_ENABLED=${SITEWATCH_METRICS_ENABLED:-true}
+      - SITEWATCH_METRICS_PATH=${SITEWATCH_METRICS_PATH:-/metrics}
+      # Authentication (set in .env file or environment)
+      - SITEWATCH_AUTH_ENABLED=${SITEWATCH_AUTH_ENABLED:-false}
+      - SITEWATCH_AUTH_UI_SECRET=${SITEWATCH_AUTH_UI_SECRET}
+      - SITEWATCH_AUTH_UI_EXPIRES_HOURS=${SITEWATCH_AUTH_UI_EXPIRES_HOURS:-24}
+      - SITEWATCH_AUTH_API_TOKEN=${SITEWATCH_AUTH_API_TOKEN}
+      - SITEWATCH_AUTH_API_TOKEN_PERMISSIONS=${SITEWATCH_AUTH_API_TOKEN_PERMISSIONS:-read}
+      # Config paths (if using alternative locations)
+      - SITEWATCH_CONFIG_PATH=${SITEWATCH_CONFIG_PATH:-configs/config.yaml}
+      - SITEWATCH_SITES_PATH=${SITEWATCH_SITES_PATH:-configs/sites.yaml}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/ping-monitor", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

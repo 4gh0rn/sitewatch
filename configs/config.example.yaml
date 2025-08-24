@@ -1,0 +1,38 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: 10s
+  write_timeout: 10s
+
+ping:
+  default_interval: 30s
+  timeout: 5s
+  packet_size: 32
+
+metrics:
+  enabled: true
+  path: "/metrics"  # Prometheus format für Telegraf
+
+# Storage configuration
+storage:
+  type: "memory"               # "memory" or "sqlite"
+  sqlite_path: "data/ping_monitor.db"  # SQLite database file path
+  max_memory_logs: 1000        # Max logs in memory mode (ring buffer)
+
+# Authentication configuration (optional - disabled by default)
+# auth:
+#   enabled: true
+#   ui:
+#     secret: "your-generated-ui-secret-here"      # Generate with: make ui-secret-generate
+#     session_name: "sitewatch_session"           # Cookie name for UI sessions
+#     expires_hours: 24                           # Session expiration (hours)
+#   api:
+#     tokens:
+#       - token: "sw_telegraf_a1b2c3d4e5f6..."    # Generate with: make token-generate
+#         name: "Telegraf Monitoring"
+#         permissions: ["metrics"]                 # Available: metrics, read, test, admin
+#         expires: "2025-12-31"                   # Optional expiration (YYYY-MM-DD)
+#       - token: "sw_admin_f6e5d4c3b2a1..."
+#         name: "Admin Access"
+#         permissions: ["admin"]
+#         # expires: null                          # Never expires

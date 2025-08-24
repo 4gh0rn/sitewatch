@@ -1,0 +1,75 @@
+sites:
+  - id: "site-001"
+    name: "Hauptstandort Berlin"
+    location: "Berlin, DE"
+    primary_ip: "8.8.8.8"      # Google DNS für Testing
+    secondary_ip: "8.8.4.4"    # Google DNS für Testing
+    primary_provider: "Telekom"    # Optional: Provider-Name für Charts
+    secondary_provider: "Vodafone" # Optional: Provider-Name für Charts
+    interval: 30  # Sekunden
+    enabled: true
+    sla:
+      primary:
+        uptime: 99.9        # Telekom Business SLA
+        max_latency: 50     # Max latency in ms
+        restoration: 240    # Max restoration time in minutes (4h)
+      secondary:
+        uptime: 99.5        # Vodafone Business SLA
+        max_latency: 80     # Max latency in ms  
+        restoration: 480    # Max restoration time in minutes (8h)
+      combined:
+        uptime: 99.95       # Combined SLA with redundancy
+    
+  - id: "site-002"
+    name: "Zweigstelle München"
+    location: "München, DE"
+    primary_ip: "1.1.1.1"      # Cloudflare DNS für Testing
+    secondary_ip: "1.0.0.1"    # Cloudflare DNS für Testing
+    primary_provider: "Deutsche Glasfaser"  # Optional: Provider-Name
+    secondary_provider: "O2"                # Optional: Provider-Name
+    interval: 60  # Sekunden
+    enabled: true
+    sla:
+      primary:
+        uptime: 99.8        # Deutsche Glasfaser Business
+        max_latency: 30     # Fiber low latency
+        restoration: 360    # 6h restoration
+      secondary:
+        uptime: 99.5        # O2 Business
+        max_latency: 100    # Mobile backup higher latency
+        restoration: 600    # 10h restoration
+      combined:
+        uptime: 99.9        # Better combined availability
+    
+  - id: "site-003"
+    name: "Test Site - localhost"
+    location: "Local, DE"
+    primary_ip: "127.0.0.1"    # Localhost - sollte immer erreichbar sein
+    secondary_ip: "192.168.1.1" # Router - kann offline sein für Testing
+    interval: 15  # Sekunden
+    enabled: true
+    sla:
+      primary:
+        uptime: 99.99       # Localhost should be very reliable
+        max_latency: 5      # Very low latency expected
+        restoration: 60     # Quick fix expected
+      secondary:
+        uptime: 95.0        # Router might be less reliable
+        max_latency: 20     # Local network latency
+        restoration: 120    # 2h to fix router issues
+      combined:
+        uptime: 99.9        # Good combined with localhost backup
+    
+  - id: "site-004"
+    name: "Single-Line Example"
+    location: "Remote, DE"
+    primary_ip: "8.8.8.8"      # Nur Primary IP - Single-Line Site
+    # secondary_ip fehlt = Single-Line Mode
+    primary_provider: "Google DNS"  # Optional: Provider name
+    interval: 45  # Sekunden
+    enabled: true
+    sla:
+      primary:
+        uptime: 99.99       # Google DNS high availability
+        max_latency: 20     # Very low latency
+        restoration: 60     # Quick restoration expected

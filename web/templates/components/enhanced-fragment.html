@@ -1,0 +1,2057 @@
+<!-- Enhanced Site Details Fragment -->
+<style>
+    .time-range-btn {
+        @apply px-3 py-1 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    }
+    .time-range-btn.active {
+        @apply bg-blue-500 text-white border-blue-500 hover:bg-blue-600 hover:text-white;
+    }
+    .time-range-btn:first-child {
+        @apply rounded-l-md;
+    }
+    .time-range-btn:last-child {
+        @apply rounded-r-md;
+    }
+    .time-range-btn:not(:first-child):not(:last-child) {
+        @apply rounded-none;
+    }
+    .chart-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+    }
+    .time-range-btn {
+        @apply px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 hover:text-gray-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500;
+    }
+    .time-range-btn.active {
+        @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-700;
+    }
+</style>
+
+<div class="space-y-6">
+    <!-- Header with Site Info -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 sm:p-6 rounded-lg border border-blue-200">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-4 sm:space-y-0">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{{.Site.Name}}</h1>
+                <p class="text-gray-600 mt-1">{{.Site.Location}}</p>
+                <div class="flex items-center mt-2 space-x-4 text-sm">
+                    <span class="font-mono bg-gray-100 px-2 py-1 rounded">{{.Site.ID}}</span>
+                    <span class="text-gray-500">Check every {{.Site.Interval}}s</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                {{if .Status.BothOnline}}
+                    <div class="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                        <span class="font-medium">Online</span>
+                    </div>
+                {{else if .Site.SecondaryIP}}
+                    {{if or .Status.PrimaryOnline .Status.SecondaryOnline}}
+                        <div class="flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+                            <span class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                            <span class="font-medium">Degraded</span>
+                        </div>
+                    {{else}}
+                        <div class="flex items-center px-3 py-1 bg-red-100 text-red-800 rounded-full">
+                            <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                            <span class="font-medium">Offline</span>
+                        </div>
+                    {{end}}
+                {{else}}
+                    <div class="flex items-center px-3 py-1 bg-red-100 text-red-800 rounded-full">
+                        <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                        <span class="font-medium">Offline</span>
+                    </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <!-- Uptime -->
+        <div class="bg-white p-4 rounded-lg shadow border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">24h Uptime</p>
+                    <p class="text-2xl font-bold text-gray-900">{{.Statistics.Uptime24h}}%</p>
+                </div>
+                <div class="p-2 bg-green-100 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-gray-500">7d: {{.Statistics.Uptime7d}}% | 12m: {{.Statistics.Uptime12m}}%</span>
+                {{if .Site.SecondaryIP}}
+                <div class="text-xs text-gray-400 mt-1">
+                    <span>Primary: {{.Statistics.PrimaryUptime12m}}%</span> | 
+                    <span>Secondary: {{.Statistics.SecondaryUptime12m}}%</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Average Latency -->
+        <div class="bg-white p-4 rounded-lg shadow border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Avg Latency</p>
+                    <p class="text-2xl font-bold text-gray-900">{{.Statistics.AvgLatency}}ms</p>
+                </div>
+                <div class="p-2 bg-blue-100 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-gray-500">Min: {{.Statistics.MinLatency}}ms | Max: {{.Statistics.MaxLatency}}ms</span>
+            </div>
+        </div>
+
+        <!-- Packet Loss -->
+        <div class="bg-white p-4 rounded-lg shadow border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Packet Loss</p>
+                    {{if .Site.SecondaryIP}}
+                        <p class="text-xl font-bold text-gray-900">{{printf "%.1f" .Statistics.PacketLossPrimary}}%</p>
+                    {{else}}
+                        <p class="text-xl font-bold text-gray-900">{{printf "%.1f" .Statistics.PacketLossPrimary}}%</p>
+                    {{end}}
+                </div>
+                <div class="p-2 bg-orange-100 rounded-lg">
+                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-2">
+                {{if .Site.SecondaryIP}}
+                    <span class="text-xs text-gray-500">P: {{printf "%.1f" .Statistics.PacketLossPrimary}}% | S: {{printf "%.1f" .Statistics.PacketLossSecondary}}%</span>
+                {{else}}
+                    <span class="text-xs text-gray-500">Network reliability</span>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Jitter -->
+        <div class="bg-white p-4 rounded-lg shadow border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Jitter</p>
+                    {{if .Site.SecondaryIP}}
+                        <p class="text-xl font-bold text-gray-900">{{printf "%.1f" .Statistics.JitterPrimary}}ms</p>
+                    {{else}}
+                        <p class="text-xl font-bold text-gray-900">{{printf "%.1f" .Statistics.JitterPrimary}}ms</p>
+                    {{end}}
+                </div>
+                <div class="p-2 bg-purple-100 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-2">
+                {{if .Site.SecondaryIP}}
+                    <span class="text-xs text-gray-500">P: {{printf "%.1f" .Statistics.JitterPrimary}}ms | S: {{printf "%.1f" .Statistics.JitterSecondary}}ms</span>
+                {{else}}
+                    <span class="text-xs text-gray-500">Network stability</span>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Success Rate -->
+        <div class="bg-white p-4 rounded-lg shadow border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Success Rate</p>
+                    <p class="text-xl font-bold text-gray-900">{{.Statistics.SuccessRate}}%</p>
+                </div>
+                <div class="p-2 bg-emerald-100 rounded-lg">
+                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-gray-500">{{.Statistics.TotalChecks}} checks</span>
+            </div>
+        </div>
+
+        <!-- Last Incident -->
+        <div class="bg-white p-4 rounded-lg shadow border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Last Incident</p>
+                    <p class="text-lg font-bold text-gray-900">{{.Statistics.LastIncident}}</p>
+                </div>
+                <div class="p-2 bg-red-100 rounded-lg">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-2">
+                <span class="text-xs text-gray-500">Duration: {{.Statistics.LastIncidentDuration}}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Connection Status -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Current Connection Status</h3>
+        <div class="space-y-4">
+            <!-- Primary Connection -->
+            <div class="border rounded-lg p-4">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-3 sm:space-y-0">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-2">
+                            {{if .Status.PrimaryOnline}}
+                                <span class="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse"></span>
+                                <h4 class="font-medium text-green-700">Primary Connection</h4>
+                            {{else}}
+                                <span class="w-3 h-3 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+                                <h4 class="font-medium text-red-700">Primary Connection</h4>
+                            {{end}}
+                        </div>
+                        <p class="text-sm text-gray-600 font-mono break-all">{{.Site.PrimaryIP}}</p>
+                        {{if not .Status.PrimaryOnline}}
+                            <p class="text-sm text-red-600 mt-1">{{.Status.PrimaryError}}</p>
+                        {{end}}
+                    </div>
+                    <div class="text-right">
+                        {{if .Status.PrimaryLatency}}
+                            <div class="text-lg font-semibold text-green-600">{{formatLatency .Status.PrimaryLatency}}ms</div>
+                            <div class="text-xs text-gray-500">Response time</div>
+                        {{else}}
+                            <div class="text-lg font-semibold text-red-600">Offline</div>
+                            <div class="text-xs text-gray-500">No response</div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Connection (if exists) -->
+            {{if .Site.SecondaryIP}}
+            <div class="border rounded-lg p-4">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-3 sm:space-y-0">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-2">
+                            {{if .Status.SecondaryOnline}}
+                                <span class="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse"></span>
+                                <h4 class="font-medium text-green-700">Secondary Connection</h4>
+                            {{else}}
+                                <span class="w-3 h-3 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+                                <h4 class="font-medium text-red-700">Secondary Connection</h4>
+                            {{end}}
+                        </div>
+                        <p class="text-sm text-gray-600 font-mono break-all">{{.Site.SecondaryIP}}</p>
+                        {{if not .Status.SecondaryOnline}}
+                            <p class="text-sm text-red-600 mt-1">{{.Status.SecondaryError}}</p>
+                        {{end}}
+                    </div>
+                    <div class="text-right">
+                        {{if .Status.SecondaryLatency}}
+                            <div class="text-lg font-semibold text-green-600">{{formatLatency .Status.SecondaryLatency}}ms</div>
+                            <div class="text-xs text-gray-500">Response time</div>
+                        {{else}}
+                            <div class="text-lg font-semibold text-red-600">Offline</div>
+                            <div class="text-xs text-gray-500">No response</div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    {{if .Site.SecondaryIP}}
+    <!-- Provider Comparison (Dual-Line Only) -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Provider Comparison</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Primary Provider -->
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <h4 class="font-medium text-blue-900 mb-3">{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary Provider{{end}}</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-blue-700">24h Uptime:</span>
+                        <span class="font-semibold text-blue-900">{{.Statistics.PrimaryUptime24h}}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-blue-700">7d Uptime:</span>
+                        <span class="font-semibold text-blue-900">{{.Statistics.PrimaryUptime7d}}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-blue-700">12m Uptime:</span>
+                        <span class="font-semibold text-blue-900">{{.Statistics.PrimaryUptime12m}}%</span>
+                    </div>
+                    <div class="flex justify-between border-t pt-2">
+                        <span class="text-sm text-blue-700">SLA Status:</span>
+                        <span class="text-sm font-semibold {{if ge .Statistics.PrimaryUptime12m .PrimarySLA}}text-green-600{{else}}text-red-600{{end}} flex items-center">
+                            {{if ge .Statistics.PrimaryUptime12m .PrimarySLA}}
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Met
+                            {{else}}
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Below
+                            {{end}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Provider -->
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h4 class="font-medium text-green-900 mb-3">{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary Provider{{end}}</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-green-700">24h Uptime:</span>
+                        <span class="font-semibold text-green-900">{{.Statistics.SecondaryUptime24h}}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-green-700">7d Uptime:</span>
+                        <span class="font-semibold text-green-900">{{.Statistics.SecondaryUptime7d}}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-green-700">12m Uptime:</span>
+                        <span class="font-semibold text-green-900">{{.Statistics.SecondaryUptime12m}}%</span>
+                    </div>
+                    <div class="flex justify-between border-t pt-2">
+                        <span class="text-sm text-green-700">SLA Status:</span>
+                        <span class="text-sm font-semibold {{if ge .Statistics.SecondaryUptime12m .SecondarySLA}}text-green-600{{else}}text-red-600{{end}} flex items-center">
+                            {{if ge .Statistics.SecondaryUptime12m .SecondarySLA}}
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Met
+                            {{else}}
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Below
+                            {{end}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SLA Details for Dual-Line -->
+        <div class="mt-4 bg-gray-50 p-4 rounded-lg">
+            <h4 class="font-medium text-gray-900 mb-3 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Service Level Agreement (SLA) Targets
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="bg-blue-100 p-3 rounded">
+                    <div class="font-medium text-blue-900">{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}</div>
+                    <div class="text-blue-700 mt-1">Target: {{.PrimarySLA}}% uptime</div>
+                    {{if .Site.SLA.Primary.MaxLatency}}
+                    <div class="text-blue-700">Max Latency: {{.Site.SLA.Primary.MaxLatency}}ms</div>
+                    {{end}}
+                    <div class="text-blue-700">Restoration: {{if .Site.SLA.Primary.Restoration}}{{.Site.SLA.Primary.Restoration}}min{{else}}N/A{{end}}</div>
+                </div>
+                <div class="bg-green-100 p-3 rounded">
+                    <div class="font-medium text-green-900">{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}</div>
+                    <div class="text-green-700 mt-1">Target: {{.SecondarySLA}}% uptime</div>
+                    {{if .Site.SLA.Secondary.MaxLatency}}
+                    <div class="text-green-700">Max Latency: {{.Site.SLA.Secondary.MaxLatency}}ms</div>
+                    {{end}}
+                    <div class="text-green-700">Restoration: {{if .Site.SLA.Secondary.Restoration}}{{.Site.SLA.Secondary.Restoration}}min{{else}}N/A{{end}}</div>
+                </div>
+                <div class="bg-gray-100 p-3 rounded">
+                    <div class="font-medium text-gray-900">Combined</div>
+                    <div class="text-gray-700 mt-1">Target: {{.CombinedSLA}}% uptime</div>
+                    <div class="text-gray-700">Dual-line redundancy</div>
+                    <div class="text-gray-700">Higher availability</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
+    <!-- Extended Performance Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Packet Loss Chart -->
+        <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+                <h3 class="text-lg font-semibold text-gray-900">Packet Loss</h3>
+                <div class="flex space-x-1">
+                    <button class="time-range-btn active" data-chart="packet_loss" data-range="24h">24h</button>
+                    <button class="time-range-btn" data-chart="packet_loss" data-range="7d">7d</button>
+                </div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="packetLossChart" class="w-full h-full border rounded"></canvas>
+            </div>
+        </div>
+
+        <!-- Jitter Chart -->
+        <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+                <h3 class="text-lg font-semibold text-gray-900">Jitter (Network Stability)</h3>
+                <div class="flex space-x-1">
+                    <button class="time-range-btn active" data-chart="jitter" data-range="24h">24h</button>
+                    <button class="time-range-btn" data-chart="jitter" data-range="7d">7d</button>
+                </div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="jitterChart" class="w-full h-full border rounded"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Latency Chart -->
+        <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+                <h3 class="text-lg font-semibold text-gray-900">Latency Timeline</h3>
+                <div class="flex space-x-1">
+                    <button class="time-range-btn active" data-chart="latency" data-range="24h">24h</button>
+                    <button class="time-range-btn" data-chart="latency" data-range="7d">7d</button>
+                </div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="latencyChart" class="w-full h-full border rounded"></canvas>
+            </div>
+        </div>
+
+        <!-- Uptime Chart -->
+        <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+                <h3 class="text-lg font-semibold text-gray-900">Uptime Overview</h3>
+                <div class="flex space-x-1">
+                    <button class="time-range-btn active" data-chart="uptime" data-range="7d">7d</button>
+                    <button class="time-range-btn" data-chart="uptime" data-range="30d">30d</button>
+                </div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="uptimeChart" class="w-full h-full border rounded"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLA Uptime Chart -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-2 sm:space-y-0">
+            <h3 class="text-lg font-semibold text-gray-900">{{if .Site.SecondaryIP}}Provider SLA Comparison{{else}}SLA Uptime Overview{{end}}</h3>
+            <div class="text-sm text-gray-600">
+                Last 12 months SLA tracking
+            </div>
+        </div>
+        <div class="h-64 relative">
+            <canvas id="yearlyUptimeChart" class="w-full h-full border rounded"></canvas>
+        </div>
+        <div class="mt-4 {{if .Site.SecondaryIP}}grid grid-cols-1 md:grid-cols-3 gap-4{{else}}flex justify-between{{end}} text-sm text-gray-600">
+            {{if .Site.SecondaryIP}}
+            <div class="text-center">
+                <span class="block font-semibold text-blue-600">{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}</span>
+                <span class="flex items-center justify-center">
+                    {{.Statistics.PrimaryUptime12m}}% 
+                    {{if ge .Statistics.PrimaryUptime12m .PrimarySLA}}
+                        <svg class="w-4 h-4 ml-1 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    {{else}}
+                        <svg class="w-4 h-4 ml-1 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    {{end}}
+                </span>
+            </div>
+            <div class="text-center">
+                <span class="block font-semibold text-green-600">{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}</span>
+                <span class="flex items-center justify-center">
+                    {{.Statistics.SecondaryUptime12m}}% 
+                    {{if ge .Statistics.SecondaryUptime12m .SecondarySLA}}
+                        <svg class="w-4 h-4 ml-1 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    {{else}}
+                        <svg class="w-4 h-4 ml-1 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    {{end}}
+                </span>
+            </div>
+            <div class="text-center">
+                <span class="block font-semibold text-gray-700">Combined</span>
+                <span class="flex items-center justify-center">
+                    {{.Statistics.Uptime12m}}% 
+                    {{if ge .Statistics.Uptime12m .CombinedSLA}}
+                        <svg class="w-4 h-4 ml-1 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    {{else}}
+                        <svg class="w-4 h-4 ml-1 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    {{end}}
+                </span>
+            </div>
+            {{else}}
+            <span>12 Month Average: <span class="font-semibold">{{.Statistics.Uptime12m}}%</span></span>
+            <span class="flex items-center">
+                {{if ge .Statistics.Uptime12m .CombinedSLA}}
+                    <svg class="w-4 h-4 mr-1 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    SLA Met
+                {{else}}
+                    <svg class="w-4 h-4 mr-1 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Below SLA
+                {{end}}
+            </span>
+            {{end}}
+        </div>
+        
+        <!-- SLA Details for Single-Line -->
+        {{if not .Site.SecondaryIP}}
+        <div class="mt-4 bg-gray-50 p-4 rounded-lg">
+            <h4 class="font-medium text-gray-900 mb-3 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Service Level Agreement (SLA) Targets
+            </h4>
+            <div class="bg-blue-100 p-4 rounded">
+                <div class="font-medium text-blue-900 mb-2">{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary Provider{{end}}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div>
+                        <div class="text-blue-700 font-medium">Uptime Target</div>
+                        <div class="text-blue-900 font-bold">{{.PrimarySLA}}%</div>
+                    </div>
+                    {{if .Site.SLA.Primary.MaxLatency}}
+                    <div>
+                        <div class="text-blue-700 font-medium">Max Latency</div>
+                        <div class="text-blue-900 font-bold">{{.Site.SLA.Primary.MaxLatency}}ms</div>
+                    </div>
+                    {{end}}
+                    <div>
+                        <div class="text-blue-700 font-medium">Restoration</div>
+                        <div class="text-blue-900 font-bold">{{if .Site.SLA.Primary.Restoration}}{{.Site.SLA.Primary.Restoration}}min{{else}}N/A{{end}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Response Time Distribution -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+            <h3 class="text-lg font-semibold text-gray-900">Response Time Distribution</h3>
+            <div class="text-sm text-gray-600">
+                Last 24 hours distribution
+            </div>
+        </div>
+        <div class="h-48 relative">
+            <canvas id="distributionChart" class="w-full h-full border rounded"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Events Log -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Recent Events
+            </h3>
+            <div class="flex space-x-2">
+                <select class="text-sm border border-gray-300 rounded px-3 py-1">
+                    <option>All Events</option>
+                    <option>Outages Only</option>
+                    <option>Recoveries Only</option>
+                </select>
+                <select class="text-sm border border-gray-300 rounded px-3 py-1">
+                    <option>Last 24h</option>
+                    <option>Last 7d</option>
+                    <option>Last 30d</option>
+                </select>
+            </div>
+        </div>
+        
+        {{if .RecentEvents}}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Timestamp
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Type
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Target
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Message
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {{range .RecentEvents}}
+                    <tr class="hover:bg-gray-50">
+                        <!-- Timestamp -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div class="font-mono">{{.Timestamp.Format "15:04:05"}}</div>
+                            <div class="text-xs text-gray-500">{{.Timestamp.Format "2006-01-02"}}</div>
+                        </td>
+                        
+                        <!-- Event Type -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {{if .IsOutage}}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Connection Lost
+                                </span>
+                            {{else}}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Connection Restored
+                                </span>
+                            {{end}}
+                        </td>
+                        
+                        <!-- Target -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{if eq .Target "primary"}}bg-blue-100 text-blue-800{{else}}bg-purple-100 text-purple-800{{end}}">
+                                {{.Target}}
+                            </span>
+                        </td>
+                        
+                        <!-- Status -->
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {{if .IsOutage}}
+                                <span class="inline-flex items-center text-red-600">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Offline
+                                </span>
+                            {{else}}
+                                <span class="inline-flex items-center text-green-600">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Online
+                                </span>
+                            {{end}}
+                        </td>
+                        
+                        <!-- Message -->
+                        <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                            {{.Message}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No recent events</h3>
+            <p class="mt-1 text-sm text-gray-500">No status changes have occurred recently for this site.</p>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Quick Actions
+        </h3>
+        
+        <!-- Test Now Button -->
+        <div class="space-y-4">
+            <button 
+                id="test-now-btn"
+                onclick="runPingTest()"
+                class="w-full flex items-center justify-center px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg id="test-icon" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <span id="test-text">Test Connection Now</span>
+            </button>
+            
+            <!-- Test Results -->
+            <div id="test-results" class="hidden">
+                <div class="bg-gray-50 rounded-lg p-4 border">
+                    <h4 class="font-medium text-gray-900 mb-3 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Test Results
+                    </h4>
+                    <div id="test-results-content" class="space-y-2">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Time range management for charts
+window.chartTimeRanges = {
+    latency: '24h',
+    uptime: '7d', 
+    yearly: '12m',
+    distribution: '24h'
+};
+
+// Sample data generators for different time ranges
+
+// Handle time range button clicks with server integration
+function handleTimeRangeChange(chartType, newRange) {
+    console.log(`🔄 Changing ${chartType} chart to ${newRange} range`);
+    
+    // Update active button
+    document.querySelectorAll(`[data-chart="${chartType}"]`).forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.range === newRange) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Store the new range
+    window.chartTimeRanges[chartType] = newRange;
+    
+    // Fetch new data from server
+    updateChartWithServerData(chartType, newRange);
+}
+
+// Fetch chart data from server and update chart
+function updateChartWithServerData(chartType, range) {
+    const chart = window.siteWatchCharts[chartType];
+    if (!chart) {
+        console.error(`Chart ${chartType} not found`);
+        return;
+    }
+    
+    // Show loading state
+    const canvas = chart.canvas;
+    const container = canvas.parentElement;
+    
+    // Add loading indicator
+    const existingLoader = container.querySelector('.chart-loading');
+    if (!existingLoader) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'chart-loading absolute inset-0 flex items-center justify-center bg-white bg-opacity-75';
+        loadingDiv.innerHTML = '<div class="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>';
+        container.style.position = 'relative';
+        container.appendChild(loadingDiv);
+    }
+    
+    // Fetch data from server
+    fetch(`/ui/chart-data/{{.Site.ID}}/${chartType}/${range}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Remove loading indicator
+            const loader = container.querySelector('.chart-loading');
+            if (loader) {
+                loader.remove();
+            }
+            
+            // Update chart data
+            chart.data.labels = data.Labels || ['No Data'];
+            
+            // Update datasets based on chart type
+            if (chartType === 'latency' || chartType === 'yearly' || chartType === 'packet_loss' || chartType === 'jitter') {
+                // Line charts
+                if (data.PrimaryData && data.PrimaryData.length > 0) {
+                    chart.data.datasets[0].data = data.PrimaryData;
+                }
+                if (data.SecondaryData && data.SecondaryData.length > 0 && chart.data.datasets[1]) {
+                    chart.data.datasets[1].data = data.SecondaryData;
+                }
+            } else if (chartType === 'uptime' || chartType === 'distribution') {
+                // Bar charts
+                if (data.CombinedData && data.CombinedData.length > 0) {
+                    chart.data.datasets[0].data = data.CombinedData;
+                }
+                if (data.PrimaryData && data.PrimaryData.length > 0 && chart.data.datasets[1]) {
+                    chart.data.datasets[1].data = data.PrimaryData;
+                }
+                if (data.SecondaryData && data.SecondaryData.length > 0 && chart.data.datasets[2]) {
+                    chart.data.datasets[2].data = data.SecondaryData;
+                }
+            } else if (chartType === 'latency_minmax') {
+                // Min/max latency charts have special data structure
+                if (data.min && data.max) {
+                    if (data.min.PrimaryData && chart.data.datasets[0]) {
+                        chart.data.datasets[0].data = data.min.PrimaryData;
+                    }
+                    if (data.max.PrimaryData && chart.data.datasets[1]) {
+                        chart.data.datasets[1].data = data.max.PrimaryData;
+                    }
+                    if (data.min.SecondaryData && chart.data.datasets[2]) {
+                        chart.data.datasets[2].data = data.min.SecondaryData;
+                    }
+                    if (data.max.SecondaryData && chart.data.datasets[3]) {
+                        chart.data.datasets[3].data = data.max.SecondaryData;
+                    }
+                }
+            }
+            
+            // Update chart
+            chart.update('active');
+            console.log(`✅ Updated ${chartType} chart for ${range} range`);
+        })
+        .catch(error => {
+            console.error(`❌ Failed to update ${chartType} chart:`, error);
+            
+            // Remove loading indicator
+            const loader = container.querySelector('.chart-loading');
+            if (loader) {
+                loader.remove();
+            }
+            
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 text-red-600 text-sm';
+            errorDiv.innerHTML = `⚠️ Failed to load ${range} data`;
+            container.appendChild(errorDiv);
+            
+            // Remove error after 3 seconds
+            setTimeout(() => errorDiv.remove(), 3000);
+        });
+}
+
+// Update chart with new time range data
+function updateChartWithTimeRange(chartType, range) {
+    const chart = window.siteWatchCharts[chartType];
+    if (!chart) {
+        console.warn(`Chart ${chartType} not found`);
+        return;
+    }
+    
+    // Show loading state
+    const canvas = chart.canvas;
+    const container = canvas.parentElement;
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chart-loading';
+    loadingDiv.innerHTML = '<div class="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>';
+    container.appendChild(loadingDiv);
+    
+    // Simulate API delay
+    setTimeout(() => {
+        let newData;
+        
+        switch(chartType) {
+            case 'latency':
+                newData = generateLatencyData(range);
+                chart.data.labels = newData.labels;
+                chart.data.datasets[0].data = newData.primary;
+                if (chart.data.datasets[1]) {
+                    chart.data.datasets[1].data = newData.secondary;
+                }
+                break;
+                
+            case 'uptime':
+                newData = generateUptimeData(range);
+                chart.data.labels = newData.labels;
+                chart.data.datasets.forEach((dataset, i) => {
+                    if (i === 0) dataset.data = newData.primary;
+                    else if (i === 1) dataset.data = newData.secondary; 
+                    else if (i === 2) dataset.data = newData.combined;
+                });
+                break;
+                
+            case 'yearly':
+                newData = generateSLAData(range);
+                chart.data.labels = newData.labels;
+                chart.data.datasets.forEach(dataset => {
+                    if (!dataset.label.includes('SLA Target')) {
+                        dataset.data = newData.data;
+                    }
+                });
+                break;
+                
+            case 'distribution':
+                newData = generateDistributionData(range);
+                chart.data.labels = newData.labels;
+                chart.data.datasets[0].data = newData.data;
+                break;
+        }
+        
+        chart.update('active');
+        
+        // Remove loading state
+        if (loadingDiv && loadingDiv.parentElement) {
+            loadingDiv.parentElement.removeChild(loadingDiv);
+        }
+        
+        console.log(`✅ Updated ${chartType} chart with ${range} data`);
+    }, 300);
+}
+
+
+// Initialize enhanced charts when fragment is loaded
+window.initializeEnhancedCharts = function() {
+    console.log('🔧 Starting chart initialization...');
+    
+    
+    // Destroy existing charts if they exist
+    if (window.siteWatchCharts) {
+        Object.values(window.siteWatchCharts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+    }
+    window.siteWatchCharts = {};
+    
+    // Check Chart.js availability
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js is not available!');
+        return;
+    }
+    
+    console.log('✅ Chart.js is available, version:', Chart.version);
+
+    // Wait for DOM to be fully rendered
+    setTimeout(function() {
+        console.log('🔄 Initializing charts after DOM ready...');
+        
+        // Latency Chart
+        console.log('🔧 Creating latency chart...');
+        
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('❌ Chart.js is not loaded!');
+            const latencyElement = document.getElementById('latencyChart');
+            if (latencyElement) {
+                const parent = latencyElement.parentElement;
+                parent.innerHTML = `
+                    <div class="flex items-center justify-center h-full text-red-600">
+                        <div class="text-center">
+                            <svg class="w-12 h-12 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            <p class="font-medium">Chart.js Not Loaded</p>
+                            <p class="text-sm text-gray-500 mt-1">Unable to initialize charts</p>
+                        </div>
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        console.log('✅ Chart.js version:', Chart.version);
+        
+        const latencyElement = document.getElementById('latencyChart');
+        if (!latencyElement) {
+            console.error('❌ Could not find latencyChart element');
+            return;
+        }
+        
+        const latencyCtx = latencyElement.getContext('2d');
+        if (!latencyCtx) {
+            console.error('❌ Could not get latencyChart context');
+            return;
+        }
+        
+        // Use real data from server
+        let primaryData, secondaryData, latencyLabels;
+        try {
+            console.log('🔍 Raw template data:', {
+                primary: '{{.LatencyChartDataPrimary}}',
+                secondary: '{{.LatencyChartDataSecondary}}',
+                labels: '{{.LatencyChartLabels}}'
+            });
+            
+            primaryData = JSON.parse('{{.LatencyChartDataPrimary}}' || '[]');
+            secondaryData = JSON.parse('{{.LatencyChartDataSecondary}}' || '[]');
+            latencyLabels = JSON.parse('{{.LatencyChartLabels}}' || '[]');
+        } catch (e) {
+            console.error('Failed to parse latency data:', e);
+            console.error('Raw data that failed to parse:', {
+                primary: '{{.LatencyChartDataPrimary}}',
+                secondary: '{{.LatencyChartDataSecondary}}',
+                labels: '{{.LatencyChartLabels}}'
+            });
+            primaryData = [];
+            secondaryData = [];
+            latencyLabels = [];
+        }
+
+        console.log('📊 Latency data:', {
+            primary: primaryData.length,
+            secondary: secondaryData.length,
+            labels: latencyLabels.length,
+            primarySample: primaryData.slice(0, 3),
+            secondarySample: secondaryData.slice(0, 3),
+            labelSample: latencyLabels.slice(0, 3)
+        });
+    
+        const latencyDatasets = [];
+        
+        // Always add primary dataset
+        latencyDatasets.push({
+            label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
+            data: primaryData,
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: false
+        });
+    
+        {{if .Site.SecondaryIP}}
+        // Add secondary dataset if site has secondary IP
+        latencyDatasets.push({
+            label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
+            data: secondaryData,
+            borderColor: 'rgb(16, 185, 129)',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            fill: false
+        });
+        {{end}}
+    
+    window.siteWatchCharts.latency = new Chart(latencyCtx, {
+        type: 'line',
+        data: {
+            labels: latencyLabels.length > 0 ? latencyLabels : ['No Data'],
+            datasets: latencyDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            if (value == null || isNaN(value)) {
+                                return `${label}: No Data`;
+                            }
+                            return `${label}: ${value.toFixed(2)}ms`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Latency (ms)'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+        }
+    });
+
+    // Uptime Chart
+    const uptimeCtx = document.getElementById('uptimeChart').getContext('2d');
+    const uptimeDatasets = [];
+    
+    // Use real uptime data from server
+    let uptimeData;
+    try {
+        const primaryUptimeData = JSON.parse('{{.UptimeChartPrimaryData}}' || '[]');
+        const secondaryUptimeData = JSON.parse('{{.UptimeChartSecondaryData}}' || '[]');
+        const combinedUptimeData = JSON.parse('{{.UptimeChartData}}' || '[]');
+        const uptimeLabels = JSON.parse('{{.UptimeChartLabels}}' || '[]');
+        
+        uptimeData = {
+            primary: primaryUptimeData,
+            secondary: secondaryUptimeData, 
+            combined: combinedUptimeData,
+            labels: uptimeLabels
+        };
+    } catch (e) {
+        console.warn('Failed to parse real uptime data:', e);
+        uptimeData = { primary: [], secondary: [], combined: [], labels: ['No Data'] };
+    }
+
+    // Only show uptime data if we have real data
+    if (uptimeData.labels.length > 0 && uptimeData.labels[0] !== 'No Data') {
+        {{if .Site.SecondaryIP}}
+        // Dual-line site: show separate provider bars
+        if (uptimeData.primary.length > 0) {
+            uptimeDatasets.push({
+                label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
+                data: uptimeData.primary,
+                backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 1
+            });
+        }
+        
+        if (uptimeData.secondary.length > 0) {
+            uptimeDatasets.push({
+                label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
+                data: uptimeData.secondary,
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: 'rgb(34, 197, 94)',
+                borderWidth: 1
+            });
+        }
+        
+        if (uptimeData.combined.length > 0) {
+            uptimeDatasets.push({
+                label: 'Combined',
+                data: uptimeData.combined,
+                backgroundColor: 'rgba(107, 114, 128, 0.8)',
+                borderColor: 'rgb(107, 114, 128)',
+                borderWidth: 1
+            });
+        }
+        {{else}}
+        // Single-line site: show only combined uptime
+        if (uptimeData.combined.length > 0) {
+            uptimeDatasets.push({
+                label: 'Uptime %',
+                data: uptimeData.combined,
+                backgroundColor: function(context) {
+                    const value = context.parsed.y;
+                    if (value >= 99) return 'rgba(34, 197, 94, 0.8)';
+                    if (value >= 95) return 'rgba(251, 191, 36, 0.8)';
+                    return 'rgba(239, 68, 68, 0.8)';
+                },
+                borderColor: function(context) {
+                    const value = context.parsed.y;
+                    if (value >= 99) return 'rgb(34, 197, 94)';
+                    if (value >= 95) return 'rgb(251, 191, 36)';
+                    return 'rgb(239, 68, 68)';
+                },
+                borderWidth: 1
+            });
+        }
+        {{end}}
+    } else {
+        // No uptime data - show empty state
+        uptimeData.labels = ['No Data'];
+        uptimeDatasets.push({
+            label: 'No Data Available',
+            data: [0],
+            backgroundColor: 'rgba(156, 163, 175, 0.8)',
+            borderColor: 'rgb(156, 163, 175)',
+            borderWidth: 1
+        });
+    }
+
+    // Use the labels from the real data
+    let uptimeLabels = uptimeData.labels;
+
+    window.siteWatchCharts.uptime = new Chart(uptimeCtx, {
+        type: 'bar',
+        data: {
+            labels: uptimeLabels,
+            datasets: uptimeDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(34, 197, 94, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        title: function(context) {
+                            const timeRange = window.chartTimeRanges.uptime;
+                            const now = new Date();
+                            const timeLabel = context[0].label;
+                            
+                            let timestamp;
+                            if (timeRange === '24h') {
+                                // Parse time format like "08:00"
+                                const [hours, minutes] = timeLabel.split(':').map(Number);
+                                timestamp = new Date(now);
+                                timestamp.setHours(hours || 0, minutes || 0, 0, 0);
+                            } else if (timeRange === '7d') {
+                                // Day of week
+                                const dayMap = {
+                                    'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 
+                                    'Fri': 5, 'Sat': 6, 'Sun': 0
+                                };
+                                timestamp = new Date(now);
+                                const dayIndex = dayMap[timeLabel];
+                                if (dayIndex !== undefined) {
+                                    timestamp.setDate(now.getDate() - (now.getDay() - dayIndex));
+                                }
+                            } else {
+                                timestamp = now;
+                            }
+                            
+                            return `${timeLabel} (${timestamp.toLocaleDateString()})`;
+                        },
+                        afterBody: function(context) {
+                            if (context.length > 1) {
+                                // Calculate combined uptime and differences
+                                const values = context.map(c => c.parsed.y);
+                                const best = Math.max(...values);
+                                const worst = Math.min(...values);
+                                const bestProvider = context.find(c => c.parsed.y === best)?.dataset.label;
+                                const delta = best - worst;
+                                
+                                if (delta > 0) {
+                                    return `\nBest: ${bestProvider} (+${delta.toFixed(2)}%)`;
+                                }
+                            }
+                            return '';
+                        },
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            const slaStatus = value >= {{.CombinedSLA}} ? '✅ SLA Met' : '⚠️ Below SLA';
+                            return `${label}: ${value.toFixed(2)}% ${slaStatus}`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Uptime (%)'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // SLA Uptime Chart
+    const yearlyUptimeCtx = document.getElementById('yearlyUptimeChart').getContext('2d');
+    const yearlyDatasets = [];
+    
+    // Use real yearly SLA data from server
+    let slaData;
+    try {
+        const slaPrimaryData = JSON.parse('{{.YearlyUptimePrimaryData}}' || '[]');
+        const slaSecondaryData = JSON.parse('{{.YearlyUptimeSecondaryData}}' || '[]');
+        const slaLabels = JSON.parse('{{.YearlyUptimeLabels}}' || '[]');
+        const slaCombinedData = JSON.parse('{{.YearlyUptimeData}}' || '[]');
+        
+        slaData = {
+            primary: slaPrimaryData,
+            secondary: slaSecondaryData,
+            data: slaCombinedData,
+            labels: slaLabels
+        };
+    } catch (e) {
+        console.warn('Failed to parse real yearly SLA data:', e);
+        slaData = { primary: [], secondary: [], data: [], labels: ['No Data'] };
+    }
+
+    // Only show yearly SLA data if we have real data
+    if (slaData.labels.length > 0 && slaData.labels[0] !== 'No Data') {
+        {{if .Site.SecondaryIP}}
+        // Dual-line site: show separate provider lines
+        if (slaData.primary.length > 0) {
+            yearlyDatasets.push({
+                label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
+                data: slaData.primary,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: false
+            });
+        }
+        
+        if (slaData.secondary.length > 0) {
+            yearlyDatasets.push({
+                label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
+                data: slaData.secondary,
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: false
+            });
+        }
+        
+        if (slaData.data.length > 0) {
+            yearlyDatasets.push({
+                label: 'Combined',
+                data: slaData.data,
+                borderColor: 'rgb(107, 114, 128)',
+                backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                tension: 0.4,
+                fill: false
+            });
+        }
+        {{else}}
+        // Single-line site: show only one line
+        if (slaData.data.length > 0) {
+            yearlyDatasets.push({
+                label: 'Monthly Uptime %',
+                data: slaData.data,
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: true
+            });
+        }
+        {{end}}
+    } else {
+        // No yearly SLA data - show empty state
+        slaData.labels = ['No Data'];
+        yearlyDatasets.push({
+            label: 'No Data Available',
+            data: [0],
+            borderColor: 'rgb(156, 163, 175)',
+            backgroundColor: 'rgba(156, 163, 175, 0.1)',
+            tension: 0.4,
+            fill: false
+        });
+    }
+
+    // Add SLA target lines only if we have real data
+    if (slaData.labels.length > 0 && slaData.labels[0] !== 'No Data') {
+        {{if .Site.SecondaryIP}}
+        // Dual-line: Add separate SLA lines for each provider
+        if (slaData.primary.length > 0) {
+            yearlyDatasets.push({
+                label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}} SLA ({{.PrimarySLA}}%)',
+                data: Array(slaData.labels.length).fill({{.PrimarySLA}}),
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderDash: [5, 5],
+                tension: 0,
+                fill: false
+            });
+        }
+        if (slaData.secondary.length > 0) {
+            yearlyDatasets.push({
+                label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}} SLA ({{.SecondarySLA}}%)',
+                data: Array(slaData.labels.length).fill({{.SecondarySLA}}),
+                borderColor: 'rgb(249, 115, 22)',
+                backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                borderDash: [10, 5],
+                tension: 0,
+                fill: false
+            });
+        }
+        {{else}}
+        // Single-line: Add one SLA line
+        yearlyDatasets.push({
+            label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}} SLA ({{.PrimarySLA}}%)',
+            data: Array(slaData.labels.length).fill({{.PrimarySLA}}),
+            borderColor: 'rgb(239, 68, 68)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderDash: [5, 5],
+            tension: 0,
+            fill: false
+        });
+        {{end}}
+    }
+
+    let yearlyLabels = slaData.labels;
+
+    window.siteWatchCharts.yearly = new Chart(yearlyUptimeCtx, {
+        type: 'line',
+        data: {
+            labels: yearlyLabels,
+            datasets: yearlyDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 95,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Uptime (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(239, 68, 68, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        title: function(context) {
+                            const timeRange = window.chartTimeRanges.yearly;
+                            const now = new Date();
+                            const timeLabel = context[0].label;
+                            
+                            // Calculate approximate timestamp for SLA periods
+                            let timestamp;
+                            if (timeRange === '3m') {
+                                timestamp = new Date(now.getFullYear(), now.getMonth() - parseInt(timeLabel.split(' ')[1]) + 1, 1);
+                            } else if (timeRange === '12m') {
+                                const monthMap = {
+                                    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+                                    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+                                };
+                                const monthIndex = monthMap[timeLabel];
+                                timestamp = new Date(now.getFullYear(), monthIndex, 1);
+                            } else {
+                                timestamp = now;
+                            }
+                            
+                            return `${timeLabel} (${timestamp.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })})`;
+                        },
+                        afterBody: function(context) {
+                            const nonTargetLines = context.filter(c => !c.dataset.label.includes('SLA Target'));
+                            if (nonTargetLines.length > 1) {
+                                // Calculate SLA compliance comparison
+                                const values = nonTargetLines.map(c => c.parsed.y);
+                                const best = Math.max(...values);
+                                const worst = Math.min(...values);
+                                const bestProvider = nonTargetLines.find(c => c.parsed.y === best)?.dataset.label;
+                                const delta = best - worst;
+                                
+                                if (delta > 0) {
+                                    return `\n📊 Best: ${bestProvider} (+${delta.toFixed(3)}%)`;
+                                }
+                            }
+                            return '';
+                        },
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            
+                            if (label.includes('SLA Target')) {
+                                return `${label}: ${value}%`;
+                            }
+                            
+                            // Determine appropriate SLA based on label
+                            let slaTarget = {{.CombinedSLA}};
+                            {{if .Site.SecondaryIP}}
+                            if (label.includes('{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}')) {
+                                slaTarget = {{.PrimarySLA}};
+                            } else if (label.includes('{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}')) {
+                                slaTarget = {{.SecondarySLA}};
+                            }
+                            {{else}}
+                            slaTarget = {{.PrimarySLA}};
+                            {{end}}
+                            
+                            const slaStatus = value >= slaTarget ? '✅ SLA Met' : '❌ Below SLA';
+                            const downtimeMinutes = ((100 - value) / 100) * 43200; // Assuming 30 days
+                            const downtimeFormatted = downtimeMinutes < 60 ? 
+                                `${downtimeMinutes.toFixed(0)}m` : 
+                                `${(downtimeMinutes / 60).toFixed(1)}h`;
+                            
+                            return `${label}: ${value.toFixed(3)}% ${slaStatus}\nDowntime: ~${downtimeFormatted}`;
+                        }
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        filter: function(item) {
+                            // Make SLA target line less prominent
+                            if (item.text.includes('SLA Target')) {
+                                item.fillStyle = 'rgba(239, 68, 68, 0.6)';
+                            }
+                            return true;
+                        }
+                    }
+                }
+            },
+        }
+    });
+
+    // Distribution Chart
+    const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+    const distributionDatasets = [];
+    
+    // Use real distribution data from server
+    let distributionData;
+    try {
+        const distributionPrimaryData = JSON.parse('{{.DistributionPrimaryData}}' || '[]');
+        const distributionSecondaryData = JSON.parse('{{.DistributionSecondaryData}}' || '[]');
+        const distributionLabels = JSON.parse('{{.DistributionChartLabels}}' || '[]');
+        const distributionCombinedData = JSON.parse('{{.DistributionChartData}}' || '[]');
+        
+        distributionData = {
+            primary: distributionPrimaryData,
+            secondary: distributionSecondaryData,
+            data: distributionCombinedData,
+            labels: distributionLabels
+        };
+    } catch (e) {
+        console.warn('Failed to parse real distribution data:', e);
+        distributionData = { primary: [], secondary: [], data: [], labels: ['No Data'] };
+    }
+
+    // Only show distribution data if we have real data
+    if (distributionData.labels.length > 0 && distributionData.labels[0] !== 'No Data') {
+        {{if .Site.SecondaryIP}}
+        // Dual-line site: show separate provider distributions
+        if (distributionData.primary.length > 0) {
+            distributionDatasets.push({
+                label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
+                data: distributionData.primary,
+                backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 1
+            });
+        }
+        
+        if (distributionData.secondary.length > 0) {
+            distributionDatasets.push({
+                label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
+                data: distributionData.secondary,
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: 'rgb(34, 197, 94)',
+                borderWidth: 1
+            });
+        }
+        {{else}}
+        // Single-line site: show combined distribution
+        if (distributionData.data.length > 0) {
+            distributionDatasets.push({
+                label: 'Response Time Distribution',
+                data: distributionData.data,
+                backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                borderColor: 'rgb(139, 92, 246)',
+                borderWidth: 1
+            });
+        }
+        {{end}}
+    } else {
+        // No distribution data - show empty state
+        distributionData.labels = ['No Data'];
+        distributionDatasets.push({
+            label: 'No Data Available',
+            data: [0],
+            backgroundColor: 'rgba(156, 163, 175, 0.8)',
+            borderColor: 'rgb(156, 163, 175)',
+            borderWidth: 1
+        });
+    }
+
+    let distributionLabels = distributionData.labels;
+
+    window.siteWatchCharts.distribution = new Chart(distributionCtx, {
+        type: 'bar',
+        data: {
+            labels: distributionLabels,
+            datasets: distributionDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(139, 92, 246, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        title: function(context) {
+                            const timeRange = window.chartTimeRanges.distribution;
+                            const now = new Date();
+                            let timeDesc;
+                            
+                            switch(timeRange) {
+                                case '1h': timeDesc = 'Last Hour'; break;
+                                case '6h': timeDesc = 'Last 6 Hours'; break;
+                                case '24h': timeDesc = 'Last 24 Hours'; break;
+                                case '7d': timeDesc = 'Last 7 Days'; break;
+                                default: timeDesc = 'Current Period';
+                            }
+                            
+                            return `${context[0].label} - ${timeDesc}`;
+                        },
+                        afterBody: function(context) {
+                            // Calculate total and percentage
+                            const total = context.reduce((sum, c) => sum + c.parsed.y, 0);
+                            const currentBucket = context[0];
+                            const percentage = ((currentBucket.parsed.y / total) * 100).toFixed(1);
+                            
+                            return `\n📊 ${percentage}% of all requests\n📈 Total requests: ${total}`;
+                        },
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            const bucket = context.label;
+                            
+                            // Add performance assessment
+                            let performance = '';
+                            if (bucket.includes('0-5ms')) performance = '🚀 Excellent';
+                            else if (bucket.includes('5-10ms')) performance = '✅ Very Good';
+                            else if (bucket.includes('10-20ms')) performance = '👍 Good';
+                            else if (bucket.includes('20-50ms')) performance = '⚠️ Acceptable';
+                            else if (bucket.includes('50-100ms')) performance = '🐌 Slow';
+                            else if (bucket.includes('>100ms')) performance = '❌ Very Slow';
+                            
+                            return `${label}: ${value} requests ${performance}`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Requests'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return Math.floor(value);
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Response Time Range'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Packet Loss Chart
+    try {
+        console.log('🔧 Creating packet loss chart...');
+        const packetLossCtx = document.getElementById('packetLossChart');
+        if (!packetLossCtx) {
+            console.error('❌ Could not find packetLossChart canvas element');
+        } else {
+            const ctx = packetLossCtx.getContext('2d');
+            let packetLossPrimary, packetLossSecondary, packetLossLabels;
+            try {
+                packetLossPrimary = JSON.parse('{{.PacketLossChartDataPrimary}}' || '[]');
+                packetLossSecondary = JSON.parse('{{.PacketLossChartDataSecondary}}' || '[]');
+                packetLossLabels = JSON.parse('{{.PacketLossChartLabels}}' || '[]');
+                console.log('📊 Packet loss data loaded:', {
+                    primary: packetLossPrimary.length,
+                    secondary: packetLossSecondary.length,
+                    labels: packetLossLabels.length
+                });
+            } catch (e) {
+                console.warn('Failed to parse packet loss data:', e);
+                packetLossPrimary = [];
+                packetLossSecondary = [];
+                packetLossLabels = [];
+            }
+
+            const packetLossDatasets = [];
+            if (packetLossPrimary.length > 0) {
+                packetLossDatasets.push({
+                    label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
+                    data: packetLossPrimary,
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    tension: 0.4
+                });
+            }
+            
+            {{if .Site.SecondaryIP}}
+            if (packetLossSecondary.length > 0) {
+                packetLossDatasets.push({
+                    label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
+                    data: packetLossSecondary,
+                    borderColor: 'rgb(245, 101, 101)',
+                    backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                    tension: 0.4
+                });
+            }
+            {{end}}
+
+            window.siteWatchCharts.packetLoss = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: packetLossLabels,
+            datasets: packetLossDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            return `${label}: ${value.toFixed(2)}% loss`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Packet Loss (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                }
+            }
+        }
+    });
+        }
+    } catch (e) {
+        console.error('❌ Error creating packet loss chart:', e);
+    }
+
+    // Jitter Chart  
+    try {
+        console.log('🔧 Creating jitter chart...');
+        const jitterElement = document.getElementById('jitterChart');
+        if (!jitterElement) {
+            console.error('❌ Could not find jitterChart canvas element');
+        } else {
+            const jitterCtx = jitterElement.getContext('2d');
+    let jitterPrimary, jitterSecondary, jitterLabels;
+    try {
+        jitterPrimary = JSON.parse('{{.JitterChartDataPrimary}}' || '[]');
+        jitterSecondary = JSON.parse('{{.JitterChartDataSecondary}}' || '[]');
+        jitterLabels = JSON.parse('{{.JitterChartLabels}}' || '[]');
+    } catch (e) {
+        console.warn('Failed to parse jitter data:', e);
+        jitterPrimary = [];
+        jitterSecondary = [];
+        jitterLabels = [];
+    }
+
+    const jitterDatasets = [];
+    if (jitterPrimary.length > 0) {
+        jitterDatasets.push({
+            label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
+            data: jitterPrimary,
+            borderColor: 'rgb(168, 85, 247)',
+            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+            tension: 0.4
+        });
+    }
+    
+    {{if .Site.SecondaryIP}}
+    if (jitterSecondary.length > 0) {
+        jitterDatasets.push({
+            label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
+            data: jitterSecondary,
+            borderColor: 'rgb(147, 51, 234)',
+            backgroundColor: 'rgba(147, 51, 234, 0.1)',
+            tension: 0.4
+        });
+    }
+    {{end}}
+
+    window.siteWatchCharts.jitter = new Chart(jitterCtx, {
+        type: 'line',
+        data: {
+            labels: jitterLabels,
+            datasets: jitterDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            return `${label}: ${value.toFixed(2)}ms jitter`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Jitter (ms)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                }
+            }
+        }
+    });
+        }
+    } catch (e) {
+        console.error('❌ Error creating jitter chart:', e);
+    }
+    
+    // Add event listeners for time range buttons
+    document.querySelectorAll('.time-range-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const chartType = btn.dataset.chart;
+            const range = btn.dataset.range;
+            handleTimeRangeChange(chartType, range);
+        });
+    });
+    
+    
+    console.log('✅ All charts and time range controls initialized successfully');
+    }, 100); // End of setTimeout for DOM ready
+};
+
+// Test Now Functionality
+function runPingTest() {
+    const btn = document.getElementById('test-now-btn');
+    const icon = document.getElementById('test-icon');
+    const text = document.getElementById('test-text');
+    const resultsDiv = document.getElementById('test-results');
+    const resultsContent = document.getElementById('test-results-content');
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    text.textContent = 'Testing...';
+    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>`;
+    icon.classList.add('animate-spin');
+    
+    // Hide previous results
+    resultsDiv.classList.add('hidden');
+    
+    // Make UI call to test endpoint (uses cookie auth)
+    fetch(`/ui/test/{{.Site.ID}}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Reset button
+        btn.disabled = false;
+        text.textContent = 'Test Connection Now';
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>`;
+        icon.classList.remove('animate-spin');
+        
+        // Show results
+        displayTestResults(data);
+        resultsDiv.classList.remove('hidden');
+    })
+    .catch(error => {
+        // Reset button
+        btn.disabled = false;
+        text.textContent = 'Test Connection Now';
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>`;
+        icon.classList.remove('animate-spin');
+        
+        // Show error
+        resultsContent.innerHTML = `
+            <div class="flex items-center p-3 bg-red-50 rounded border-l-4 border-red-500">
+                <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-red-700">Test failed: ${error.message}</span>
+            </div>
+        `;
+        resultsDiv.classList.remove('hidden');
+    });
+}
+
+function displayTestResults(data) {
+    const resultsContent = document.getElementById('test-results-content');
+    let html = '';
+    
+    if (data.primary) {
+        const result = data.primary;
+        const statusColor = result.success ? 'green' : 'red';
+        const statusIcon = result.success ? 
+            `<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>` :
+            `<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>`;
+        
+        html += `
+            <div class="flex items-center justify-between p-3 bg-${statusColor}-50 rounded border-l-4 border-${statusColor}-500">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-${statusColor}-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                        ${statusIcon}
+                    </svg>
+                    <div>
+                        <div class="font-medium text-${statusColor}-800">Primary (${result.ip})</div>
+                        <div class="text-sm text-${statusColor}-600">${result.success ? 'Success' : result.error}</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    ${result.latency ? `<div class="font-mono text-${statusColor}-700">${result.latency}ms</div>` : ''}
+                    <div class="text-xs text-${statusColor}-500">${new Date(result.timestamp).toLocaleTimeString()}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.secondary) {
+        const result = data.secondary;
+        const statusColor = result.success ? 'green' : 'red';
+        const statusIcon = result.success ? 
+            `<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>` :
+            `<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>`;
+        
+        html += `
+            <div class="flex items-center justify-between p-3 bg-${statusColor}-50 rounded border-l-4 border-${statusColor}-500">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-${statusColor}-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                        ${statusIcon}
+                    </svg>
+                    <div>
+                        <div class="font-medium text-${statusColor}-800">Secondary (${result.ip})</div>
+                        <div class="text-sm text-${statusColor}-600">${result.success ? 'Success' : result.error}</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    ${result.latency ? `<div class="font-mono text-${statusColor}-700">${result.latency}ms</div>` : ''}
+                    <div class="text-xs text-${statusColor}-500">${new Date(result.timestamp).toLocaleTimeString()}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    resultsContent.innerHTML = html;
+}
+
+// Auto-initialize charts when this script loads (for direct page loads)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            console.log('📊 Auto-initializing charts from DOMContentLoaded...');
+            if (typeof window.initializeEnhancedCharts === 'function') {
+                window.initializeEnhancedCharts();
+            }
+        }, 100);
+    });
+} else {
+    // DOM is already loaded, initialize immediately
+    setTimeout(() => {
+        console.log('📊 Auto-initializing charts immediately...');
+        if (typeof window.initializeEnhancedCharts === 'function') {
+            window.initializeEnhancedCharts();
+        }
+    }, 100);
+}
+</script>

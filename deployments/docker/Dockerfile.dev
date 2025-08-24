@@ -1,0 +1,23 @@
+# Development Dockerfile - With CGO support for SQLite
+FROM golang:1.23-alpine
+
+# Install basic tools and C libraries for SQLite
+RUN apk add --no-cache git curl gcc musl-dev sqlite-dev
+
+# Set environment variables for CGO
+ENV CGO_ENABLED=1
+
+# Set working directory
+WORKDIR /app
+
+# Copy everything
+COPY . .
+
+# Download dependencies
+RUN go mod download
+
+# Expose port
+EXPOSE 8080
+
+# Simple development command - run all Go files in the package with CGO enabled
+CMD ["go", "run", "."]
