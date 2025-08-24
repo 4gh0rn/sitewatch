@@ -46,7 +46,7 @@ SiteWatch continuously monitors network connectivity at multiple sites by pingin
 
 1. **Clone and navigate to the project**
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:4gh0rn/sitewatch.git
    cd sitewatch
    ```
 
