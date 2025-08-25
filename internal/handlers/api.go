@@ -59,15 +59,15 @@ func HandleGetSiteStatus(c *fiber.Ctx) error {
 	config.GlobalAppState.Mu.RUnlock()
 	
 	if !exists {
-		return c.Status(404).SendString("failure")
+		return c.Status(404).SendString("DOWN")
 	}
 	
 	// Site is considered successful if at least one line is online
 	if status.PrimaryOnline || status.SecondaryOnline {
-		return c.Status(200).SendString("success")
+		return c.Status(200).SendString("OK")
 	}
 	
-	return c.Status(503).SendString("failure")
+	return c.Status(503).SendString("DOWN")
 }
 
 // HandleGetSiteDetails - GET /api/sites/{siteId}/details - Detailed site information
