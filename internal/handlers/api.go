@@ -62,7 +62,8 @@ func HandleGetSiteStatus(c *fiber.Ctx) error {
 		return c.Status(404).SendString("failure")
 	}
 	
-	if status.BothOnline {
+	// Site is considered successful if at least one line is online
+	if status.PrimaryOnline || status.SecondaryOnline {
 		return c.Status(200).SendString("success")
 	}
 	

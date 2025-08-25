@@ -32,8 +32,11 @@ RUN apk add --no-cache ca-certificates tzdata sqlite
 COPY --from=builder /app/ping-monitor /ping-monitor
 
 # Copy default config files
-COPY config.yaml /app/config.yaml
-COPY sites.yaml /app/sites.yaml
+COPY configs/config.yaml /app/config.yaml
+COPY configs/sites.yaml /app/sites.yaml
+
+# Copy web templates and static files
+COPY web/ /app/web/
 
 # Create data directory for SQLite database
 RUN mkdir -p /app/data

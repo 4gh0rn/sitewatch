@@ -1195,6 +1195,8 @@ func CalculateOverviewData(app *config.AppState) models.OverviewData {
 			if status.PrimaryOnline && status.SecondaryOnline {
 				onlineSites++
 			} else if status.PrimaryOnline || status.SecondaryOnline {
+				// Count degraded sites as online (since at least one line works)
+				onlineSites++
 				degradedSites++
 			} else {
 				offlineSites++

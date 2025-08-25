@@ -38,6 +38,9 @@ func SetupFiberApp(appState *config.AppState) *fiber.App {
 		}
 		return fmt.Sprintf("%.1f", *latency)
 	})
+	engine.AddFunc("add", func(a, b int) int {
+		return a + b
+	})
 	engine.AddFunc("dict", func(values ...interface{}) (map[string]interface{}, error) {
 		if len(values)%2 != 0 {
 			return nil, fmt.Errorf("invalid dict call")
