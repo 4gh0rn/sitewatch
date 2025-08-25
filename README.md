@@ -271,7 +271,7 @@ checks:
     url: "http://sitewatch:8080/api/sites/site-001/status"
     headers:
       Authorization: "Bearer sw_monitor_x1y2z3..."  # read permission
-    expect: "success"
+    expect: "OK"
     interval: 60s
     timeout: 10s
 ```
@@ -285,7 +285,7 @@ checks:
 | `/` | GET | Web dashboard (main UI) | HTML |
 | `/health` | GET | Service health check | JSON status |
 | `/api/sites` | GET | All sites with status overview | JSON array |
-| `/api/sites/{id}/status` | GET | Serverguard compatible status | `success`/`failure` |
+| `/api/sites/{id}/status` | GET | Serverguard compatible status | `OK`/`FAILURE` |
 | `/api/sites/{id}/details` | GET | Detailed site information | JSON object |
 | `/api/logs` | GET | Ping logs with filtering | JSON array |
 | `/metrics` | GET | Prometheus format metrics | Plain text |

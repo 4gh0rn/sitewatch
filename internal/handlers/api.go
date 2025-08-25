@@ -51,6 +51,7 @@ func HandleGetSites(c *fiber.Ctx) error {
 }
 
 // HandleGetSiteStatus - GET /api/sites/{siteId}/status - Serverguard compatible endpoint
+// Returns "OK" (HTTP 200) if at least one line is online, "FAILURE" (HTTP 200) if all lines are offline
 func HandleGetSiteStatus(c *fiber.Ctx) error {
 	siteID := c.Params("siteId")
 	
@@ -59,7 +60,7 @@ func HandleGetSiteStatus(c *fiber.Ctx) error {
 	config.GlobalAppState.Mu.RUnlock()
 	
 	if !exists {
-		return c.Status(404).SendString("DOWN")
+		return c.Status(200).SendString("FAILURE")
 	}
 	
 	// Site is considered successful if at least one line is online
@@ -67,7 +68,7 @@ func HandleGetSiteStatus(c *fiber.Ctx) error {
 		return c.Status(200).SendString("OK")
 	}
 	
-	return c.Status(503).SendString("DOWN")
+	return c.Status(200).SendString("FAILURE")
 }
 
 // HandleGetSiteDetails - GET /api/sites/{siteId}/details - Detailed site information
