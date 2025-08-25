@@ -24,6 +24,7 @@ func SetupFiberApp(appState *config.AppState) *fiber.App {
 	// Initialize authentication service
 	authService := auth.NewService(&appState.Config.Auth)
 	log.Info("Authentication service initialized", "enabled", authService.IsEnabled())
+	
 	// Initialize template engine
 	engine := html.New("./web/templates", ".html")
 	engine.Reload(true) // Enable auto-reload in development
@@ -150,6 +151,7 @@ func SetupFiberApp(appState *config.AppState) *fiber.App {
 		}
 		return handlers.HandleDashboard(c)
 	})
+	
 	fiberApp.Get("/dashboard", func(c *fiber.Ctx) error {
 		// Set UI session cookie if auth is enabled
 		if authService.IsEnabled() {
@@ -191,6 +193,7 @@ func SetupFiberApp(appState *config.AppState) *fiber.App {
 	apiRead.Get("/sites/:siteId/statistics", handlers.HandleGetSiteStatistics)
 	apiRead.Get("/sites/:siteId/charts", handlers.HandleGetSiteChartData)
 	apiRead.Get("/logs", handlers.HandleGetLogs)
+	
 	// Health endpoint also available for read tokens
 	apiRead.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{

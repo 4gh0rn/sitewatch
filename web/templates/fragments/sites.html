@@ -2,7 +2,7 @@
 <div class="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
     {{if .Sites}}
         {{range .Sites}}
-        <article class="bg-white overflow-hidden shadow-sm border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all duration-200 group" 
+        <article class="bg-white overflow-hidden shadow-sm border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all duration-200 group flex flex-col" 
                  role="article" 
                  aria-labelledby="site-{{.ID}}-title">
             <!-- Status Bar at Top -->
@@ -22,7 +22,7 @@
                 {{end}}
             {{end}}
             
-            <div class="p-5">
+            <div class="p-5 flex flex-col flex-1">
                 <!-- Site Header -->
                 <header class="flex items-start justify-between mb-4">
                     <div class="flex-1 min-w-0">
@@ -103,7 +103,7 @@
                 </header>
 
                 <!-- Connection Status -->
-                <div class="space-y-3 mb-5">
+                <div class="space-y-3 mb-5 flex-1">
                     <!-- Primary Connection -->
                     <div class="border border-gray-100 rounded-lg p-3 bg-gray-50/50">
                         <div class="flex items-start justify-between">
@@ -263,7 +263,7 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex gap-2 mt-5 pt-4 border-t border-gray-100">
+                <div class="flex gap-2 mt-auto pt-4 border-t border-gray-100">
                     <button 
                         hx-get="/ui/details/{{.ID}}" 
                         hx-target="#modal-container"
