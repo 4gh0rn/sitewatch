@@ -969,6 +969,228 @@ func generateLatencyChartDaily(allLogs []models.PingLog, siteID string, now time
 	}
 }
 
+// generatePacketLossChartDaily generates packet loss chart data (daily aggregation)
+func generatePacketLossChartDaily(allLogs []models.PingLog, siteID string, now time.Time, days int) ChartDataResult {
+	var labels []string
+	var primaryPacketLoss, secondaryPacketLoss []float64
+	
+	for i := days - 1; i >= 0; i-- {
+		dayStart := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
+		dayEnd := dayStart.Add(24 * time.Hour)
+		
+		labels = append(labels, dayStart.Format("Jan 2"))
+		
+		var primaryLossSum, secondaryLossSum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(dayStart) || !log.Timestamp.Before(dayEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" && log.PacketLoss != nil {
+				primaryLossSum += *log.PacketLoss
+				primaryCount++
+			} else if log.Target == "secondary" && log.PacketLoss != nil {
+				secondaryLossSum += *log.PacketLoss
+				secondaryCount++
+			}
+		}
+		
+		if primaryCount > 0 {
+			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
+		} else {
+			primaryPacketLoss = append(primaryPacketLoss, 0)
+		}
+		
+		if secondaryCount > 0 {
+			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
+		} else {
+			secondaryPacketLoss = append(secondaryPacketLoss, 0)
+		}
+	}
+	
+	return ChartDataResult{
+		Labels:        labels,
+		PrimaryData:   primaryPacketLoss,
+		SecondaryData: secondaryPacketLoss,
+	}
+}
+
+// generateJitterChartDaily generates jitter chart data (daily aggregation)
+func generateJitterChartDaily(allLogs []models.PingLog, siteID string, now time.Time, days int) ChartDataResult {
+	var labels []string
+	var primaryJitter, secondaryJitter []float64
+	
+	for i := days - 1; i >= 0; i-- {
+		dayStart := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
+		dayEnd := dayStart.Add(24 * time.Hour)
+		
+		labels = append(labels, dayStart.Format("Jan 2"))
+		
+		var primaryJitterSum, secondaryJitterSum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(dayStart) || !log.Timestamp.Before(dayEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" && log.Jitter != nil {
+				primaryJitterSum += *log.Jitter
+				primaryCount++
+			} else if log.Target == "secondary" && log.Jitter != nil {
+				secondaryJitterSum += *log.Jitter
+				secondaryCount++
+			}
+		}
+		
+		if primaryCount > 0 {
+			primaryJitter = append(primaryJitter, primaryJitterSum/float64(primaryCount))
+		} else {
+			primaryJitter = append(primaryJitter, 0)
+		}
+		
+		if secondaryCount > 0 {
+			secondaryJitter = append(secondaryJitter, secondaryJitterSum/float64(secondaryCount))
+		} else {
+			secondaryJitter = append(secondaryJitter, 0)
+		}
+	}
+	
+	return ChartDataResult{
+		Labels:        labels,
+		PrimaryData:   primaryJitter,
+		SecondaryData: secondaryJitter,
+	}
+}
+
+// generateLatencyMinMaxChartDaily generates min/max latency chart data (daily aggregation)
+func generateLatencyMinMaxChartDaily(allLogs []models.PingLog, siteID string, now time.Time, days int) (ChartDataResult, ChartDataResult) {
+	var labels []string
+	var primaryMin, primaryMax, secondaryMin, secondaryMax []float64
+	
+	for i := days - 1; i >= 0; i-- {
+		dayStart := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
+		dayEnd := dayStart.Add(24 * time.Hour)
+		
+		labels = append(labels, dayStart.Format("Jan 2"))
+		
+		var primaryMinVal, primaryMaxVal, secondaryMinVal, secondaryMaxVal float64
+		var primaryMinSet, primaryMaxSet, secondaryMinSet, secondaryMaxSet bool
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(dayStart) || !log.Timestamp.Before(dayEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" {
+				if log.MinLatency != nil {
+					if !primaryMinSet || *log.MinLatency < primaryMinVal {
+						primaryMinVal = *log.MinLatency
+						primaryMinSet = true
+					}
+				}
+				if log.MaxLatency != nil {
+					if !primaryMaxSet || *log.MaxLatency > primaryMaxVal {
+						primaryMaxVal = *log.MaxLatency
+						primaryMaxSet = true
+					}
+				}
+			} else if log.Target == "secondary" {
+				if log.MinLatency != nil {
+					if !secondaryMinSet || *log.MinLatency < secondaryMinVal {
+						secondaryMinVal = *log.MinLatency
+						secondaryMinSet = true
+					}
+				}
+				if log.MaxLatency != nil {
+					if !secondaryMaxSet || *log.MaxLatency > secondaryMaxVal {
+						secondaryMaxVal = *log.MaxLatency
+						secondaryMaxSet = true
+					}
+				}
+			}
+		}
+		
+		if primaryMinSet {
+			primaryMin = append(primaryMin, primaryMinVal)
+		} else {
+			primaryMin = append(primaryMin, 0)
+		}
+		
+		if primaryMaxSet {
+			primaryMax = append(primaryMax, primaryMaxVal)
+		} else {
+			primaryMax = append(primaryMax, 0)
+		}
+		
+		if secondaryMinSet {
+			secondaryMin = append(secondaryMin, secondaryMinVal)
+		} else {
+			secondaryMin = append(secondaryMin, 0)
+		}
+		
+		if secondaryMaxSet {
+			secondaryMax = append(secondaryMax, secondaryMaxVal)
+		} else {
+			secondaryMax = append(secondaryMax, 0)
+		}
+	}
+	
+	minResult := ChartDataResult{
+		Labels:        labels,
+		PrimaryData:   primaryMin,
+		SecondaryData: secondaryMin,
+	}
+	
+	maxResult := ChartDataResult{
+		Labels:        labels,
+		PrimaryData:   primaryMax,
+		SecondaryData: secondaryMax,
+	}
+	
+	return minResult, maxResult
+}
+
+// generateUptimeChartHourly generates uptime chart data (hourly aggregation)
+func generateUptimeChartHourly(allLogs []models.PingLog, siteID string, now time.Time, hours int) ChartDataResult {
+	var labels []string
+	var combinedData, primaryData, secondaryData []float64
+	
+	for i := hours - 1; i >= 0; i-- {
+		hourStart := now.Add(time.Duration(-i) * time.Hour).Truncate(time.Hour)
+		hourEnd := hourStart.Add(time.Hour)
+		
+		labels = append(labels, hourStart.Format("15:04"))
+		
+		stats := NewTimeframeStats()
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(hourStart) || !log.Timestamp.Before(hourEnd) {
+				continue
+			}
+			stats.AddLog(log)
+		}
+		
+		// Calculate uptime percentages for this hour
+		combinedUptime := stats.GetUptimePercentage()
+		primaryUptime := stats.GetProviderUptime("primary")
+		secondaryUptime := stats.GetProviderUptime("secondary")
+		
+		combinedData = append(combinedData, combinedUptime)
+		primaryData = append(primaryData, primaryUptime)
+		secondaryData = append(secondaryData, secondaryUptime)
+	}
+	
+	return ChartDataResult{
+		Labels:        labels,
+		CombinedData:  combinedData,
+		PrimaryData:   primaryData,
+		SecondaryData: secondaryData,
+	}
+}
+
 // generateUptimeChart generates uptime chart data
 func generateUptimeChart(allLogs []models.PingLog, siteID string, now time.Time, days int) ChartDataResult {
 	var labels []string
@@ -1252,6 +1474,12 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 	switch chartType {
 	case "latency":
 		switch timeRange {
+		case "1h":
+			return generateLatencyChart(allLogs, siteID, now, 1) // 1 hourly point
+		case "3h":
+			return generateLatencyChart(allLogs, siteID, now, 3) // 3 hourly points
+		case "12h":
+			return generateLatencyChart(allLogs, siteID, now, 12) // 12 hourly points
 		case "24h":
 			return generateLatencyChart(allLogs, siteID, now, 24) // 24 hourly points
 		case "7d":
@@ -1259,6 +1487,11 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 		}
 	case "uptime":
 		switch timeRange {
+		case "12h":
+			// For sub-day ranges, use hourly aggregation
+			return generateUptimeChartHourly(allLogs, siteID, now, 12) // 12 hourly points
+		case "24h":
+			return generateUptimeChartHourly(allLogs, siteID, now, 24) // 24 hourly points
 		case "7d":
 			return generateUptimeChart(allLogs, siteID, now, 7) // 7 daily points
 		case "30d":
@@ -1273,21 +1506,52 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 		return generateDistributionChart(allLogs, siteID, since)
 	case "packet_loss":
 		switch timeRange {
+		case "1h":
+			return generatePacketLossChart(allLogs, siteID, now, 1)
+		case "3h":
+			return generatePacketLossChart(allLogs, siteID, now, 3)
+		case "12h":
+			return generatePacketLossChart(allLogs, siteID, now, 12)
 		case "24h":
 			return generatePacketLossChart(allLogs, siteID, now, 24)
 		case "7d":
-			// For 7d we could use daily aggregation, but keep hourly for now
-			return generatePacketLossChart(allLogs, siteID, now, 168) // 7*24 hours
+			// Use daily aggregation for 7 days (7 data points, not 168)
+			return generatePacketLossChartDaily(allLogs, siteID, now, 7)
 		}
 	case "jitter":
 		switch timeRange {
+		case "1h":
+			return generateJitterChart(allLogs, siteID, now, 1)
+		case "3h":
+			return generateJitterChart(allLogs, siteID, now, 3)
+		case "12h":
+			return generateJitterChart(allLogs, siteID, now, 12)
 		case "24h":
 			return generateJitterChart(allLogs, siteID, now, 24)
 		case "7d":
-			return generateJitterChart(allLogs, siteID, now, 168) // 7*24 hours
+			// Use daily aggregation for 7 days (7 data points, not 168)
+			return generateJitterChartDaily(allLogs, siteID, now, 7)
 		}
 	case "latency_minmax":
 		switch timeRange {
+		case "1h":
+			minData, maxData := generateLatencyMinMaxChart(allLogs, siteID, now, 1)
+			return fiber.Map{
+				"min": minData,
+				"max": maxData,
+			}
+		case "3h":
+			minData, maxData := generateLatencyMinMaxChart(allLogs, siteID, now, 3)
+			return fiber.Map{
+				"min": minData,
+				"max": maxData,
+			}
+		case "12h":
+			minData, maxData := generateLatencyMinMaxChart(allLogs, siteID, now, 12)
+			return fiber.Map{
+				"min": minData,
+				"max": maxData,
+			}
 		case "24h":
 			minData, maxData := generateLatencyMinMaxChart(allLogs, siteID, now, 24)
 			return fiber.Map{
@@ -1295,7 +1559,7 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 				"max": maxData,
 			}
 		case "7d":
-			minData, maxData := generateLatencyMinMaxChart(allLogs, siteID, now, 168)
+			minData, maxData := generateLatencyMinMaxChartDaily(allLogs, siteID, now, 7)
 			return fiber.Map{
 				"min": minData,
 				"max": maxData,

@@ -390,6 +390,9 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
                 <h3 class="text-lg font-semibold text-gray-900">Packet Loss</h3>
                 <div class="flex space-x-1">
+                    <button class="time-range-btn" data-chart="packet_loss" data-range="1h">1h</button>
+                    <button class="time-range-btn" data-chart="packet_loss" data-range="3h">3h</button>
+                    <button class="time-range-btn" data-chart="packet_loss" data-range="12h">12h</button>
                     <button class="time-range-btn active" data-chart="packet_loss" data-range="24h">24h</button>
                     <button class="time-range-btn" data-chart="packet_loss" data-range="7d">7d</button>
                 </div>
@@ -404,6 +407,9 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
                 <h3 class="text-lg font-semibold text-gray-900">Jitter (Network Stability)</h3>
                 <div class="flex space-x-1">
+                    <button class="time-range-btn" data-chart="jitter" data-range="1h">1h</button>
+                    <button class="time-range-btn" data-chart="jitter" data-range="3h">3h</button>
+                    <button class="time-range-btn" data-chart="jitter" data-range="12h">12h</button>
                     <button class="time-range-btn active" data-chart="jitter" data-range="24h">24h</button>
                     <button class="time-range-btn" data-chart="jitter" data-range="7d">7d</button>
                 </div>
@@ -421,6 +427,9 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
                 <h3 class="text-lg font-semibold text-gray-900">Latency Timeline</h3>
                 <div class="flex space-x-1">
+                    <button class="time-range-btn" data-chart="latency" data-range="1h">1h</button>
+                    <button class="time-range-btn" data-chart="latency" data-range="3h">3h</button>
+                    <button class="time-range-btn" data-chart="latency" data-range="12h">12h</button>
                     <button class="time-range-btn active" data-chart="latency" data-range="24h">24h</button>
                     <button class="time-range-btn" data-chart="latency" data-range="7d">7d</button>
                 </div>
@@ -435,6 +444,8 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
                 <h3 class="text-lg font-semibold text-gray-900">Uptime Overview</h3>
                 <div class="flex space-x-1">
+                    <button class="time-range-btn" data-chart="uptime" data-range="12h">12h</button>
+                    <button class="time-range-btn" data-chart="uptime" data-range="24h">24h</button>
                     <button class="time-range-btn active" data-chart="uptime" data-range="7d">7d</button>
                     <button class="time-range-btn" data-chart="uptime" data-range="30d">30d</button>
                 </div>
@@ -730,7 +741,9 @@ window.chartTimeRanges = {
     latency: '24h',
     uptime: '7d', 
     yearly: '12m',
-    distribution: '24h'
+    distribution: '24h',
+    packet_loss: '24h',
+    jitter: '24h'
 };
 
 // Sample data generators for different time ranges
@@ -1760,8 +1773,8 @@ window.initializeEnhancedCharts = function() {
                 packetLossDatasets.push({
                     label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
                     data: packetLossPrimary,
-                    borderColor: 'rgb(239, 68, 68)',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4
                 });
             }
@@ -1771,14 +1784,14 @@ window.initializeEnhancedCharts = function() {
                 packetLossDatasets.push({
                     label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
                     data: packetLossSecondary,
-                    borderColor: 'rgb(245, 101, 101)',
-                    backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     tension: 0.4
                 });
             }
             {{end}}
 
-            window.siteWatchCharts.packetLoss = new Chart(ctx, {
+            window.siteWatchCharts.packet_loss = new Chart(ctx, {
         type: 'line',
         data: {
             labels: packetLossLabels,
@@ -1845,8 +1858,8 @@ window.initializeEnhancedCharts = function() {
         jitterDatasets.push({
             label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
             data: jitterPrimary,
-            borderColor: 'rgb(168, 85, 247)',
-            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+            borderColor: 'rgb(59, 130, 246)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
             tension: 0.4
         });
     }
@@ -1856,8 +1869,8 @@ window.initializeEnhancedCharts = function() {
         jitterDatasets.push({
             label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
             data: jitterSecondary,
-            borderColor: 'rgb(147, 51, 234)',
-            backgroundColor: 'rgba(147, 51, 234, 0.1)',
+            borderColor: 'rgb(16, 185, 129)',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
             tension: 0.4
         });
     }
