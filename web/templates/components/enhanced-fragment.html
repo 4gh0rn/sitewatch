@@ -1006,22 +1006,11 @@ window.initializeEnhancedCharts = function() {
         // Use real data from server
         let primaryData, secondaryData, latencyLabels;
         try {
-            console.log('🔍 Raw template data:', {
-                primary: '{{.LatencyChartDataPrimary}}',
-                secondary: '{{.LatencyChartDataSecondary}}',
-                labels: '{{.LatencyChartLabels}}'
-            });
-            
             primaryData = JSON.parse('{{.LatencyChartDataPrimary}}' || '[]');
             secondaryData = JSON.parse('{{.LatencyChartDataSecondary}}' || '[]');
             latencyLabels = JSON.parse('{{.LatencyChartLabels}}' || '[]');
         } catch (e) {
             console.error('Failed to parse latency data:', e);
-            console.error('Raw data that failed to parse:', {
-                primary: '{{.LatencyChartDataPrimary}}',
-                secondary: '{{.LatencyChartDataSecondary}}',
-                labels: '{{.LatencyChartLabels}}'
-            });
             primaryData = [];
             secondaryData = [];
             latencyLabels = [];
@@ -1794,7 +1783,7 @@ window.initializeEnhancedCharts = function() {
             window.siteWatchCharts.packet_loss = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: packetLossLabels,
+            labels: packetLossLabels.length > 0 ? packetLossLabels : ['No Data'],
             datasets: packetLossDatasets
         },
         options: {
@@ -1832,6 +1821,8 @@ window.initializeEnhancedCharts = function() {
     } catch (e) {
         console.error('❌ Error creating packet loss chart:', e);
     }
+
+    // API calls will be made after ALL charts are created
 
     // Jitter Chart  
     try {
@@ -1879,7 +1870,7 @@ window.initializeEnhancedCharts = function() {
     window.siteWatchCharts.jitter = new Chart(jitterCtx, {
         type: 'line',
         data: {
-            labels: jitterLabels,
+            labels: jitterLabels.length > 0 ? jitterLabels : ['No Data'],
             datasets: jitterDatasets
         },
         options: {
@@ -1930,6 +1921,9 @@ window.initializeEnhancedCharts = function() {
     
     
     console.log('✅ All charts and time range controls initialized successfully');
+    
+    // Charts now use template data like before - API calls only on button clicks
+    
     }, 100); // End of setTimeout for DOM ready
 };
 

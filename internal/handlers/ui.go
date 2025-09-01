@@ -200,10 +200,52 @@ func HandleUIEnhancedFragment(c *fiber.Ctx) error {
 	chartData := stats.GenerateChartData(config.GlobalAppState, siteID)
 	recentEvents := stats.GetRecentEvents(config.GlobalAppState, siteID, 10)
 	
+	// Generate initial chart data using the same API as the button clicks
+	// Use 24h as default for consistent behavior with button "24h" being active
+	latencyChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "latency", "24h")
+	packetLossChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "packet_loss", "24h")
+	jitterChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "jitter", "24h")
+	
 	// Convert chart data to JSON strings for templates
-	latencyLabelsJSON, _ := json.Marshal(chartData.LatencyChartLabels)
-	latencyPrimaryJSON, _ := json.Marshal(chartData.LatencyChartDataPrimary)
-	latencySecondaryJSON, _ := json.Marshal(chartData.LatencyChartDataSecondary)
+	var latencyLabelsJSON, latencyPrimaryJSON, latencySecondaryJSON []byte
+	var packetLossLabelsJSON, packetLossPrimaryJSON, packetLossSecondaryJSON []byte  
+	var jitterLabelsJSON, jitterPrimaryJSON, jitterSecondaryJSON []byte
+	
+	// Handle latency chart data
+	if latencyResult, ok := latencyChartData.(stats.ChartDataResult); ok {
+		latencyLabelsJSON, _ = json.Marshal(latencyResult.Labels)
+		latencyPrimaryJSON, _ = json.Marshal(latencyResult.PrimaryData)
+		latencySecondaryJSON, _ = json.Marshal(latencyResult.SecondaryData)
+	} else {
+		// Fallback to old method
+		latencyLabelsJSON, _ = json.Marshal(chartData.LatencyChartLabels)
+		latencyPrimaryJSON, _ = json.Marshal(chartData.LatencyChartDataPrimary)
+		latencySecondaryJSON, _ = json.Marshal(chartData.LatencyChartDataSecondary)
+	}
+	
+	// Handle packet loss chart data
+	if packetLossResult, ok := packetLossChartData.(stats.ChartDataResult); ok {
+		packetLossLabelsJSON, _ = json.Marshal(packetLossResult.Labels)
+		packetLossPrimaryJSON, _ = json.Marshal(packetLossResult.PrimaryData)
+		packetLossSecondaryJSON, _ = json.Marshal(packetLossResult.SecondaryData)
+	} else {
+		// Fallback to old method
+		packetLossLabelsJSON, _ = json.Marshal(chartData.PacketLossChartLabels)
+		packetLossPrimaryJSON, _ = json.Marshal(chartData.PacketLossChartDataPrimary)
+		packetLossSecondaryJSON, _ = json.Marshal(chartData.PacketLossChartDataSecondary)
+	}
+	
+	// Handle jitter chart data
+	if jitterResult, ok := jitterChartData.(stats.ChartDataResult); ok {
+		jitterLabelsJSON, _ = json.Marshal(jitterResult.Labels)
+		jitterPrimaryJSON, _ = json.Marshal(jitterResult.PrimaryData)
+		jitterSecondaryJSON, _ = json.Marshal(jitterResult.SecondaryData)
+	} else {
+		// Fallback to old method
+		jitterLabelsJSON, _ = json.Marshal(chartData.JitterChartLabels)
+		jitterPrimaryJSON, _ = json.Marshal(chartData.JitterChartDataPrimary)
+		jitterSecondaryJSON, _ = json.Marshal(chartData.JitterChartDataSecondary)
+	}
 	uptimeLabelsJSON, _ := json.Marshal(chartData.UptimeChartLabels)
 	uptimeDataJSON, _ := json.Marshal(chartData.UptimeChartData)
 	uptimePrimaryJSON, _ := json.Marshal(chartData.UptimeChartDataPrimary)
@@ -219,14 +261,6 @@ func HandleUIEnhancedFragment(c *fiber.Ctx) error {
 	distributionDataJSON, _ := json.Marshal(chartData.DistributionChartData)
 	distributionPrimaryJSON, _ := json.Marshal(chartData.DistributionPrimaryData)
 	distributionSecondaryJSON, _ := json.Marshal(chartData.DistributionSecondaryData)
-	
-	// Extended ping data JSON
-	packetLossLabelsJSON, _ := json.Marshal(chartData.PacketLossChartLabels)
-	packetLossPrimaryJSON, _ := json.Marshal(chartData.PacketLossChartDataPrimary)
-	packetLossSecondaryJSON, _ := json.Marshal(chartData.PacketLossChartDataSecondary)
-	jitterLabelsJSON, _ := json.Marshal(chartData.JitterChartLabels)
-	jitterPrimaryJSON, _ := json.Marshal(chartData.JitterChartDataPrimary)
-	jitterSecondaryJSON, _ := json.Marshal(chartData.JitterChartDataSecondary)
 	latencyMinMaxLabelsJSON, _ := json.Marshal(chartData.LatencyMinMaxChartLabels)
 	latencyMinPrimaryJSON, _ := json.Marshal(chartData.LatencyMinChartDataPrimary)
 	latencyMaxPrimaryJSON, _ := json.Marshal(chartData.LatencyMaxChartDataPrimary)

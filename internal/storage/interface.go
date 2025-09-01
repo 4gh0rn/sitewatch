@@ -15,13 +15,8 @@ func CreateStorage(config models.Config) (Storage, error) {
 	switch config.Storage.Type {
 	case "sqlite":
 		return NewSQLiteStorage(config.Storage.SQLitePath)
-	case "memory":
-		fallthrough
 	default:
-		maxLogs := config.Storage.MaxMemoryLogs
-		if maxLogs <= 0 {
-			maxLogs = 1000
-		}
-		return NewMemoryStorage(maxLogs), nil
+		// Default to SQLite for all cases
+		return NewSQLiteStorage(config.Storage.SQLitePath)
 	}
 }

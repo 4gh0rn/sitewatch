@@ -27,9 +27,8 @@ type Config struct {
 	} `yaml:"metrics"`
 	
 	Storage struct {
-		Type           string `yaml:"type"`            // "memory" or "sqlite"
-		SQLitePath     string `yaml:"sqlite_path"`     // Path to SQLite database file
-		MaxMemoryLogs  int    `yaml:"max_memory_logs"` // Max logs in memory mode
+		Type       string `yaml:"type"`        // Always "sqlite" for persistent storage
+		SQLitePath string `yaml:"sqlite_path"` // Path to SQLite database file
 	} `yaml:"storage"`
 	
 	Auth AuthConfig `yaml:"auth,omitempty"` // Authentication configuration

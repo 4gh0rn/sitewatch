@@ -84,12 +84,7 @@ func LoadEnvOverrides(cfg *models.Config) {
 		cfg.Storage.SQLitePath = v
 		log.Info("Environment override applied", "setting", "Storage.SQLitePath", "value", v)
 	}
-	if v := os.Getenv("SITEWATCH_STORAGE_MAX_MEMORY_LOGS"); v != "" {
-		if max, err := strconv.Atoi(v); err == nil {
-			cfg.Storage.MaxMemoryLogs = max
-			log.Info("Environment override applied", "setting", "Storage.MaxMemoryLogs", "value", max)
-		}
-	}
+	// MaxMemoryLogs removed - only SQLite storage is used now
 
 	// Authentication configuration
 	if v := os.Getenv("SITEWATCH_AUTH_ENABLED"); v != "" {

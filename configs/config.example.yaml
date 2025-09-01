@@ -15,9 +15,8 @@ metrics:
 
 # Storage configuration
 storage:
-  type: "memory"               # "memory" or "sqlite"
+  type: "sqlite"               # Always use SQLite for persistent data
   sqlite_path: "data/ping_monitor.db"  # SQLite database file path
-  max_memory_logs: 1000        # Max logs in memory mode (ring buffer)
 
 # Authentication configuration (optional - disabled by default)
 # auth:

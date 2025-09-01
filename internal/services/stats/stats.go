@@ -674,6 +674,8 @@ func generateLatencyChart(allLogs []models.PingLog, siteID string, now time.Time
 			}
 		}
 		
+
+		
 		// Calculate mean latencies for this hour only
 		var primarySum, secondarySum float64
 		var primaryCount, secondaryCount int
@@ -702,8 +704,33 @@ func generateLatencyChart(allLogs []models.PingLog, siteID string, now time.Time
 		secondaryLatencies = append(secondaryLatencies, secondaryMean)
 	}
 	
-	// Add debugging output
+	// Add detailed debugging output
 	log := logger.Default().WithComponent("chart-latency")
+	
+	// Count non-zero values
+	nonZeroPrimary := 0
+	nonZeroSecondary := 0
+	for _, val := range primaryLatencies {
+		if val > 0 {
+			nonZeroPrimary++
+		}
+	}
+	for _, val := range secondaryLatencies {
+		if val > 0 {
+			nonZeroSecondary++
+		}
+	}
+	
+	// Get sample of actual logs for debugging
+	sampleLogCount := 0
+	var sampleLogTimes []string
+	for _, log := range allLogs {
+		if log.SiteID == siteID && sampleLogCount < 5 {
+			sampleLogTimes = append(sampleLogTimes, log.Timestamp.Format("2006-01-02 15:04:05 UTC"))
+			sampleLogCount++
+		}
+	}
+	
 	log.Info("Generated hourly latency chart data", 
 		"site_id", siteID, 
 		"hours", hours,
@@ -711,23 +738,376 @@ func generateLatencyChart(allLogs []models.PingLog, siteID string, now time.Time
 		"labels_count", len(labels),
 		"primary_count", len(primaryLatencies),
 		"secondary_count", len(secondaryLatencies),
-		"sample_primary", func() []float64 { 
+		"non_zero_primary", nonZeroPrimary,
+		"non_zero_secondary", nonZeroSecondary,
+		"sample_primary_first", func() []float64 { 
 			if len(primaryLatencies) >= 3 { 
 				return primaryLatencies[:3] 
 			} 
 			return primaryLatencies 
+		}(),
+		"sample_primary_last", func() []float64 { 
+			if len(primaryLatencies) >= 3 { 
+				return primaryLatencies[len(primaryLatencies)-3:] 
+			} 
+			return primaryLatencies 
+		}(),
+		"sample_secondary_first", func() []float64 { 
+			if len(secondaryLatencies) >= 3 { 
+				return secondaryLatencies[:3] 
+			} 
+			return secondaryLatencies 
+		}(),
+		"sample_secondary_last", func() []float64 { 
+			if len(secondaryLatencies) >= 3 { 
+				return secondaryLatencies[len(secondaryLatencies)-3:] 
+			} 
+			return secondaryLatencies 
 		}(),
 		"sample_labels", func() []string { 
 			if len(labels) >= 3 { 
 				return labels[:3] 
 			} 
 			return labels 
-		}())
+		}(),
+		"sample_log_times", sampleLogTimes,
+		"now_utc", now.Format("2006-01-02 15:04:05 UTC"))
+	
+	// Filter out empty buckets to show only periods with real data
+	filteredResult := filterEmptyBuckets(labels, primaryLatencies, secondaryLatencies)
+	
+	return filteredResult
+}
+
+// generateLatencyChartMinutely generates latency chart data with minute-level granularity
+func generateLatencyChartMinutely(allLogs []models.PingLog, siteID string, now time.Time, minutes int) ChartDataResult {
+	var labels []string
+	var primaryLatencies, secondaryLatencies []float64
+	
+	for i := minutes - 1; i >= 0; i-- {
+		minuteStart := now.Add(time.Duration(-i) * time.Minute).Truncate(time.Minute)
+		minuteEnd := minuteStart.Add(time.Minute)
+		
+		labels = append(labels, minuteStart.Format("15:04"))
+		
+		// Filter logs for this specific minute
+		var minuteLogs []models.PingLog
+		for _, log := range allLogs {
+			if log.SiteID == siteID && !log.Timestamp.Before(minuteStart) && log.Timestamp.Before(minuteEnd) {
+				minuteLogs = append(minuteLogs, log)
+			}
+		}
+		
+		// Calculate mean latencies for this minute
+		var primarySum, secondarySum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range minuteLogs {
+			if log.Success && log.Latency != nil {
+				if log.Target == "primary" {
+					primarySum += *log.Latency
+					primaryCount++
+				} else if log.Target == "secondary" {
+					secondarySum += *log.Latency
+					secondaryCount++
+				}
+			}
+		}
+		
+		var primaryMean, secondaryMean float64
+		if primaryCount > 0 {
+			primaryMean = primarySum / float64(primaryCount)
+		}
+		if secondaryCount > 0 {
+			secondaryMean = secondarySum / float64(secondaryCount)
+		}
+		
+		primaryLatencies = append(primaryLatencies, primaryMean)
+		secondaryLatencies = append(secondaryLatencies, secondaryMean)
+	}
+	
+	// Filter out empty buckets to show only periods with real data
+	return filterEmptyBuckets(labels, primaryLatencies, secondaryLatencies)
+}
+
+// generateLatencyChart5Minutes generates latency chart data with 5-minute buckets
+func generateLatencyChart5Minutes(allLogs []models.PingLog, siteID string, now time.Time, periods int) ChartDataResult {
+	var labels []string
+	var primaryLatencies, secondaryLatencies []float64
+	
+	for i := periods - 1; i >= 0; i-- {
+		periodStart := now.Add(time.Duration(-i*5) * time.Minute).Truncate(5 * time.Minute)
+		periodEnd := periodStart.Add(5 * time.Minute)
+		
+		labels = append(labels, periodStart.Format("15:04"))
+		
+		// Filter logs for this 5-minute period
+		var periodLogs []models.PingLog
+		for _, log := range allLogs {
+			if log.SiteID == siteID && !log.Timestamp.Before(periodStart) && log.Timestamp.Before(periodEnd) {
+				periodLogs = append(periodLogs, log)
+			}
+		}
+		
+		// Calculate mean latencies for this 5-minute period
+		var primarySum, secondarySum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range periodLogs {
+			if log.Success && log.Latency != nil {
+				if log.Target == "primary" {
+					primarySum += *log.Latency
+					primaryCount++
+				} else if log.Target == "secondary" {
+					secondarySum += *log.Latency
+					secondaryCount++
+				}
+			}
+		}
+		
+		var primaryMean, secondaryMean float64
+		if primaryCount > 0 {
+			primaryMean = primarySum / float64(primaryCount)
+		}
+		if secondaryCount > 0 {
+			secondaryMean = secondarySum / float64(secondaryCount)
+		}
+		
+		primaryLatencies = append(primaryLatencies, primaryMean)
+		secondaryLatencies = append(secondaryLatencies, secondaryMean)
+	}
+	
+	// Filter out empty buckets to show only periods with real data
+	return filterEmptyBuckets(labels, primaryLatencies, secondaryLatencies)
+}
+
+// generatePacketLossChartMinutely generates packet loss chart data with minute-level granularity
+func generatePacketLossChartMinutely(allLogs []models.PingLog, siteID string, now time.Time, minutes int) ChartDataResult {
+	var labels []string
+	var primaryPacketLoss, secondaryPacketLoss []float64
+	
+	for i := minutes - 1; i >= 0; i-- {
+		minuteStart := now.Add(time.Duration(-i) * time.Minute).Truncate(time.Minute)
+		minuteEnd := minuteStart.Add(time.Minute)
+		
+		labels = append(labels, minuteStart.Format("15:04"))
+		
+		var primaryLossSum, secondaryLossSum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(minuteStart) || !log.Timestamp.Before(minuteEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" && log.PacketLoss != nil {
+				primaryLossSum += *log.PacketLoss
+				primaryCount++
+			} else if log.Target == "secondary" && log.PacketLoss != nil {
+				secondaryLossSum += *log.PacketLoss
+				secondaryCount++
+			}
+		}
+		
+		if primaryCount > 0 {
+			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
+		} else {
+			primaryPacketLoss = append(primaryPacketLoss, 0)
+		}
+		
+		if secondaryCount > 0 {
+			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
+		} else {
+			secondaryPacketLoss = append(secondaryPacketLoss, 0)
+		}
+	}
+	
+	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
+}
+
+// generatePacketLossChart5Minutes generates packet loss chart data with 5-minute buckets
+func generatePacketLossChart5Minutes(allLogs []models.PingLog, siteID string, now time.Time, periods int) ChartDataResult {
+	var labels []string
+	var primaryPacketLoss, secondaryPacketLoss []float64
+	
+	for i := periods - 1; i >= 0; i-- {
+		periodStart := now.Add(time.Duration(-i*5) * time.Minute).Truncate(5 * time.Minute)
+		periodEnd := periodStart.Add(5 * time.Minute)
+		
+		labels = append(labels, periodStart.Format("15:04"))
+		
+		var primaryLossSum, secondaryLossSum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(periodStart) || !log.Timestamp.Before(periodEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" && log.PacketLoss != nil {
+				primaryLossSum += *log.PacketLoss
+				primaryCount++
+			} else if log.Target == "secondary" && log.PacketLoss != nil {
+				secondaryLossSum += *log.PacketLoss
+				secondaryCount++
+			}
+		}
+		
+		if primaryCount > 0 {
+			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
+		} else {
+			primaryPacketLoss = append(primaryPacketLoss, 0)
+		}
+		
+		if secondaryCount > 0 {
+			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
+		} else {
+			secondaryPacketLoss = append(secondaryPacketLoss, 0)
+		}
+	}
+	
+	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
+}
+
+// generateJitterChartMinutely generates jitter chart data with minute-level granularity
+func generateJitterChartMinutely(allLogs []models.PingLog, siteID string, now time.Time, minutes int) ChartDataResult {
+	var labels []string
+	var primaryJitter, secondaryJitter []float64
+	
+	for i := minutes - 1; i >= 0; i-- {
+		minuteStart := now.Add(time.Duration(-i) * time.Minute).Truncate(time.Minute)
+		minuteEnd := minuteStart.Add(time.Minute)
+		
+		labels = append(labels, minuteStart.Format("15:04"))
+		
+		var primaryJitterSum, secondaryJitterSum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(minuteStart) || !log.Timestamp.Before(minuteEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" && log.Jitter != nil {
+				primaryJitterSum += *log.Jitter
+				primaryCount++
+			} else if log.Target == "secondary" && log.Jitter != nil {
+				secondaryJitterSum += *log.Jitter
+				secondaryCount++
+			}
+		}
+		
+		if primaryCount > 0 {
+			primaryJitter = append(primaryJitter, primaryJitterSum/float64(primaryCount))
+		} else {
+			primaryJitter = append(primaryJitter, 0)
+		}
+		
+		if secondaryCount > 0 {
+			secondaryJitter = append(secondaryJitter, secondaryJitterSum/float64(secondaryCount))
+		} else {
+			secondaryJitter = append(secondaryJitter, 0)
+		}
+	}
+	
+	return filterEmptyBuckets(labels, primaryJitter, secondaryJitter)
+}
+
+// generateJitterChart5Minutes generates jitter chart data with 5-minute buckets
+func generateJitterChart5Minutes(allLogs []models.PingLog, siteID string, now time.Time, periods int) ChartDataResult {
+	var labels []string
+	var primaryJitter, secondaryJitter []float64
+	
+	for i := periods - 1; i >= 0; i-- {
+		periodStart := now.Add(time.Duration(-i*5) * time.Minute).Truncate(5 * time.Minute)
+		periodEnd := periodStart.Add(5 * time.Minute)
+		
+		labels = append(labels, periodStart.Format("15:04"))
+		
+		var primaryJitterSum, secondaryJitterSum float64
+		var primaryCount, secondaryCount int
+		
+		for _, log := range allLogs {
+			if log.SiteID != siteID || log.Timestamp.Before(periodStart) || !log.Timestamp.Before(periodEnd) {
+				continue
+			}
+			
+			if log.Target == "primary" && log.Jitter != nil {
+				primaryJitterSum += *log.Jitter
+				primaryCount++
+			} else if log.Target == "secondary" && log.Jitter != nil {
+				secondaryJitterSum += *log.Jitter
+				secondaryCount++
+			}
+		}
+		
+		if primaryCount > 0 {
+			primaryJitter = append(primaryJitter, primaryJitterSum/float64(primaryCount))
+		} else {
+			primaryJitter = append(primaryJitter, 0)
+		}
+		
+		if secondaryCount > 0 {
+			secondaryJitter = append(secondaryJitter, secondaryJitterSum/float64(secondaryCount))
+		} else {
+			secondaryJitter = append(secondaryJitter, 0)
+		}
+	}
+	
+	return filterEmptyBuckets(labels, primaryJitter, secondaryJitter)
+}
+
+// filterEmptyBuckets removes time buckets that have no data for any line
+// NOTE: 0 values are considered valid data (e.g. 0% packet loss), only filter truly empty buckets
+func filterEmptyBuckets(labels []string, primaryData, secondaryData []float64) ChartDataResult {
+	var filteredLabels []string
+	var filteredPrimary, filteredSecondary []float64
+	
+	// Keep buckets that have data in at least one line (including 0 values)
+	for i := 0; i < len(labels); i++ {
+		hasPrimaryData := i < len(primaryData)
+		hasSecondaryData := i < len(secondaryData)
+		
+		// Include bucket if we have data for either line (even if value is 0)
+		if hasPrimaryData || hasSecondaryData {
+			filteredLabels = append(filteredLabels, labels[i])
+			
+			if i < len(primaryData) {
+				filteredPrimary = append(filteredPrimary, primaryData[i])
+			} else {
+				filteredPrimary = append(filteredPrimary, 0)
+			}
+			
+			if i < len(secondaryData) {
+				filteredSecondary = append(filteredSecondary, secondaryData[i])
+			} else {
+				filteredSecondary = append(filteredSecondary, 0)
+			}
+		}
+	}
+	
+	// Fallback: if no data found, keep at least the last bucket to avoid empty charts
+	if len(filteredLabels) == 0 && len(labels) > 0 {
+		lastIdx := len(labels) - 1
+		filteredLabels = append(filteredLabels, labels[lastIdx])
+		
+		if lastIdx < len(primaryData) {
+			filteredPrimary = append(filteredPrimary, primaryData[lastIdx])
+		} else {
+			filteredPrimary = append(filteredPrimary, 0)
+		}
+		
+		if lastIdx < len(secondaryData) {
+			filteredSecondary = append(filteredSecondary, secondaryData[lastIdx])
+		} else {
+			filteredSecondary = append(filteredSecondary, 0)
+		}
+	}
 	
 	return ChartDataResult{
-		Labels:        labels,
-		PrimaryData:   primaryLatencies,
-		SecondaryData: secondaryLatencies,
+		Labels:        filteredLabels,
+		PrimaryData:   filteredPrimary,
+		SecondaryData: filteredSecondary,
 	}
 }
 
@@ -772,11 +1152,7 @@ func generatePacketLossChart(allLogs []models.PingLog, siteID string, now time.T
 		}
 	}
 	
-	return ChartDataResult{
-		Labels:        labels,
-		PrimaryData:   primaryPacketLoss,
-		SecondaryData: secondaryPacketLoss,
-	}
+	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
 }
 
 // generateJitterChart generates jitter chart data
@@ -820,11 +1196,8 @@ func generateJitterChart(allLogs []models.PingLog, siteID string, now time.Time,
 		}
 	}
 	
-	return ChartDataResult{
-		Labels:        labels,
-		PrimaryData:   primaryJitter,
-		SecondaryData: secondaryJitter,
-	}
+	// Filter out empty buckets to show only periods with real data
+	return filterEmptyBuckets(labels, primaryJitter, secondaryJitter)
 }
 
 // generateLatencyMinMaxChart generates min/max latency chart data
@@ -1010,11 +1383,7 @@ func generatePacketLossChartDaily(allLogs []models.PingLog, siteID string, now t
 		}
 	}
 	
-	return ChartDataResult{
-		Labels:        labels,
-		PrimaryData:   primaryPacketLoss,
-		SecondaryData: secondaryPacketLoss,
-	}
+	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
 }
 
 // generateJitterChartDaily generates jitter chart data (daily aggregation)
@@ -1475,11 +1844,11 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 	case "latency":
 		switch timeRange {
 		case "1h":
-			return generateLatencyChart(allLogs, siteID, now, 1) // 1 hourly point
+			return generateLatencyChartMinutely(allLogs, siteID, now, 60) // 60 minute points
 		case "3h":
-			return generateLatencyChart(allLogs, siteID, now, 3) // 3 hourly points
+			return generateLatencyChart5Minutes(allLogs, siteID, now, 36) // 36 x 5-minute points
 		case "12h":
-			return generateLatencyChart(allLogs, siteID, now, 12) // 12 hourly points
+			return generateLatencyChart5Minutes(allLogs, siteID, now, 144) // 144 x 5-minute points
 		case "24h":
 			return generateLatencyChart(allLogs, siteID, now, 24) // 24 hourly points
 		case "7d":
@@ -1507,30 +1876,28 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 	case "packet_loss":
 		switch timeRange {
 		case "1h":
-			return generatePacketLossChart(allLogs, siteID, now, 1)
+			return generatePacketLossChartMinutely(allLogs, siteID, now, 60) // 60 minute points
 		case "3h":
-			return generatePacketLossChart(allLogs, siteID, now, 3)
+			return generatePacketLossChart5Minutes(allLogs, siteID, now, 36) // 36 x 5-minute points
 		case "12h":
-			return generatePacketLossChart(allLogs, siteID, now, 12)
+			return generatePacketLossChart5Minutes(allLogs, siteID, now, 144) // 144 x 5-minute points
 		case "24h":
-			return generatePacketLossChart(allLogs, siteID, now, 24)
+			return generatePacketLossChart(allLogs, siteID, now, 24) // 24 hourly points
 		case "7d":
-			// Use daily aggregation for 7 days (7 data points, not 168)
-			return generatePacketLossChartDaily(allLogs, siteID, now, 7)
+			return generatePacketLossChartDaily(allLogs, siteID, now, 7) // 7 daily points
 		}
 	case "jitter":
 		switch timeRange {
 		case "1h":
-			return generateJitterChart(allLogs, siteID, now, 1)
+			return generateJitterChartMinutely(allLogs, siteID, now, 60) // 60 minute points
 		case "3h":
-			return generateJitterChart(allLogs, siteID, now, 3)
+			return generateJitterChart5Minutes(allLogs, siteID, now, 36) // 36 x 5-minute points
 		case "12h":
-			return generateJitterChart(allLogs, siteID, now, 12)
+			return generateJitterChart5Minutes(allLogs, siteID, now, 144) // 144 x 5-minute points
 		case "24h":
-			return generateJitterChart(allLogs, siteID, now, 24)
+			return generateJitterChart(allLogs, siteID, now, 24) // 24 hourly points
 		case "7d":
-			// Use daily aggregation for 7 days (7 data points, not 168)
-			return generateJitterChartDaily(allLogs, siteID, now, 7)
+			return generateJitterChartDaily(allLogs, siteID, now, 7) // 7 daily points
 		}
 	case "latency_minmax":
 		switch timeRange {

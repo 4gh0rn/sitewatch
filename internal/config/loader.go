@@ -46,14 +46,12 @@ func (app *AppState) LoadConfig() error {
 	
 	// Storage defaults
 	if app.Config.Storage.Type == "" {
-		app.Config.Storage.Type = "memory"
+		app.Config.Storage.Type = "sqlite"
 	}
 	if app.Config.Storage.SQLitePath == "" {
 		app.Config.Storage.SQLitePath = "data/ping_monitor.db"
 	}
-	if app.Config.Storage.MaxMemoryLogs == 0 {
-		app.Config.Storage.MaxMemoryLogs = 1000
-	}
+	// MaxMemoryLogs removed - only SQLite storage is used now
 	
 	// Auth defaults
 	if app.Config.Auth.UI.SessionName == "" {
