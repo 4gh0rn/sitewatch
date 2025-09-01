@@ -597,7 +597,7 @@ func GenerateChartData(app *config.AppState, siteID string) models.ChartData {
 	yearlyData := generateYearlyChart(allLogs, siteID, now, MonthsPerYear)
 	
 	// Generate extended ping data charts
-	packetLossData := generatePacketLossChart(allLogs, siteID, now, DefaultChartDataPoints)
+	packetTransmissionData := generatePacketTransmissionChart(allLogs, siteID, now, DefaultChartDataPoints)
 	jitterData := generateJitterChart(allLogs, siteID, now, DefaultChartDataPoints)
 	minLatencyData, maxLatencyData := generateLatencyMinMaxChart(allLogs, siteID, now, DefaultChartDataPoints)
 	
@@ -630,10 +630,10 @@ func GenerateChartData(app *config.AppState, siteID string) models.ChartData {
 		YearlyUptimeDataPrimary:   yearlyData.PrimaryData,
 		YearlyUptimeDataSecondary: yearlyData.SecondaryData,
 		
-		// Extended ping data charts (24h)
-		PacketLossChartLabels:        packetLossData.Labels,
-		PacketLossChartDataPrimary:   packetLossData.PrimaryData,
-		PacketLossChartDataSecondary: packetLossData.SecondaryData,
+		// Extended ping data charts (24h) - Packet Transmission Success Rate
+		PacketLossChartLabels:        packetTransmissionData.Labels,
+		PacketLossChartDataPrimary:   packetTransmissionData.PrimaryData,
+		PacketLossChartDataSecondary: packetTransmissionData.SecondaryData,
 		
 		JitterChartLabels:        jitterData.Labels,
 		JitterChartDataPrimary:   jitterData.PrimaryData,
@@ -881,10 +881,10 @@ func generateLatencyChart5Minutes(allLogs []models.PingLog, siteID string, now t
 	return filterEmptyBuckets(labels, primaryLatencies, secondaryLatencies)
 }
 
-// generatePacketLossChartMinutely generates packet loss chart data with minute-level granularity
-func generatePacketLossChartMinutely(allLogs []models.PingLog, siteID string, now time.Time, minutes int) ChartDataResult {
+// generatePacketTransmissionChartMinutely generates packet transmission success rate data with minute-level granularity  
+func generatePacketTransmissionChartMinutely(allLogs []models.PingLog, siteID string, now time.Time, minutes int) ChartDataResult {
 	var labels []string
-	var primaryPacketLoss, secondaryPacketLoss []float64
+	var primarySuccess, secondarySuccess []float64
 	
 	for i := minutes - 1; i >= 0; i-- {
 		minuteStart := now.Add(time.Duration(-i) * time.Minute).Truncate(time.Minute)
@@ -892,43 +892,42 @@ func generatePacketLossChartMinutely(allLogs []models.PingLog, siteID string, no
 		
 		labels = append(labels, minuteStart.Format("15:04"))
 		
-		var primaryLossSum, secondaryLossSum float64
-		var primaryCount, secondaryCount int
+		var primarySent, primaryReceived, secondarySent, secondaryReceived int
 		
 		for _, log := range allLogs {
 			if log.SiteID != siteID || log.Timestamp.Before(minuteStart) || !log.Timestamp.Before(minuteEnd) {
 				continue
 			}
 			
-			if log.Target == "primary" && log.PacketLoss != nil {
-				primaryLossSum += *log.PacketLoss
-				primaryCount++
-			} else if log.Target == "secondary" && log.PacketLoss != nil {
-				secondaryLossSum += *log.PacketLoss
-				secondaryCount++
+			if log.Target == "primary" {
+				primarySent += log.PacketsSent
+				primaryReceived += log.PacketsRecv
+			} else if log.Target == "secondary" {
+				secondarySent += log.PacketsSent
+				secondaryReceived += log.PacketsRecv
 			}
 		}
 		
-		if primaryCount > 0 {
-			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
-		} else {
-			primaryPacketLoss = append(primaryPacketLoss, 0)
+		// Calculate success rate as percentage of received vs sent packets
+		var primarySuccessRate, secondarySuccessRate float64
+		if primarySent > 0 {
+			primarySuccessRate = (float64(primaryReceived) / float64(primarySent)) * 100
+		}
+		if secondarySent > 0 {
+			secondarySuccessRate = (float64(secondaryReceived) / float64(secondarySent)) * 100
 		}
 		
-		if secondaryCount > 0 {
-			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
-		} else {
-			secondaryPacketLoss = append(secondaryPacketLoss, 0)
-		}
+		primarySuccess = append(primarySuccess, primarySuccessRate)
+		secondarySuccess = append(secondarySuccess, secondarySuccessRate)
 	}
 	
-	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
+	return filterEmptyBuckets(labels, primarySuccess, secondarySuccess)
 }
 
-// generatePacketLossChart5Minutes generates packet loss chart data with 5-minute buckets
-func generatePacketLossChart5Minutes(allLogs []models.PingLog, siteID string, now time.Time, periods int) ChartDataResult {
+// generatePacketTransmissionChart5Minutes generates packet transmission success rate data with 5-minute buckets
+func generatePacketTransmissionChart5Minutes(allLogs []models.PingLog, siteID string, now time.Time, periods int) ChartDataResult {
 	var labels []string
-	var primaryPacketLoss, secondaryPacketLoss []float64
+	var primarySuccess, secondarySuccess []float64
 	
 	for i := periods - 1; i >= 0; i-- {
 		periodStart := now.Add(time.Duration(-i*5) * time.Minute).Truncate(5 * time.Minute)
@@ -936,37 +935,36 @@ func generatePacketLossChart5Minutes(allLogs []models.PingLog, siteID string, no
 		
 		labels = append(labels, periodStart.Format("15:04"))
 		
-		var primaryLossSum, secondaryLossSum float64
-		var primaryCount, secondaryCount int
+		var primarySent, primaryReceived, secondarySent, secondaryReceived int
 		
 		for _, log := range allLogs {
 			if log.SiteID != siteID || log.Timestamp.Before(periodStart) || !log.Timestamp.Before(periodEnd) {
 				continue
 			}
 			
-			if log.Target == "primary" && log.PacketLoss != nil {
-				primaryLossSum += *log.PacketLoss
-				primaryCount++
-			} else if log.Target == "secondary" && log.PacketLoss != nil {
-				secondaryLossSum += *log.PacketLoss
-				secondaryCount++
+			if log.Target == "primary" {
+				primarySent += log.PacketsSent
+				primaryReceived += log.PacketsRecv
+			} else if log.Target == "secondary" {
+				secondarySent += log.PacketsSent
+				secondaryReceived += log.PacketsRecv
 			}
 		}
 		
-		if primaryCount > 0 {
-			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
-		} else {
-			primaryPacketLoss = append(primaryPacketLoss, 0)
+		// Calculate success rate as percentage of received vs sent packets
+		var primarySuccessRate, secondarySuccessRate float64
+		if primarySent > 0 {
+			primarySuccessRate = (float64(primaryReceived) / float64(primarySent)) * 100
+		}
+		if secondarySent > 0 {
+			secondarySuccessRate = (float64(secondaryReceived) / float64(secondarySent)) * 100
 		}
 		
-		if secondaryCount > 0 {
-			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
-		} else {
-			secondaryPacketLoss = append(secondaryPacketLoss, 0)
-		}
+		primarySuccess = append(primarySuccess, primarySuccessRate)
+		secondarySuccess = append(secondarySuccess, secondarySuccessRate)
 	}
 	
-	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
+	return filterEmptyBuckets(labels, primarySuccess, secondarySuccess)
 }
 
 // generateJitterChartMinutely generates jitter chart data with minute-level granularity
@@ -1111,10 +1109,10 @@ func filterEmptyBuckets(labels []string, primaryData, secondaryData []float64) C
 	}
 }
 
-// generatePacketLossChart generates packet loss chart data
-func generatePacketLossChart(allLogs []models.PingLog, siteID string, now time.Time, hours int) ChartDataResult {
+// generatePacketTransmissionChart generates packet transmission chart data showing sent vs received packets
+func generatePacketTransmissionChart(allLogs []models.PingLog, siteID string, now time.Time, hours int) ChartDataResult {
 	var labels []string
-	var primaryPacketLoss, secondaryPacketLoss []float64
+	var primarySuccess, secondarySuccess []float64
 	
 	for i := hours - 1; i >= 0; i-- {
 		hourStart := now.Add(time.Duration(-i) * time.Hour).Truncate(time.Hour)
@@ -1122,37 +1120,36 @@ func generatePacketLossChart(allLogs []models.PingLog, siteID string, now time.T
 		
 		labels = append(labels, hourStart.Format("15:04"))
 		
-		var primaryLossSum, secondaryLossSum float64
-		var primaryCount, secondaryCount int
+		var primarySent, primaryReceived, secondarySent, secondaryReceived int
 		
 		for _, log := range allLogs {
 			if log.SiteID != siteID || log.Timestamp.Before(hourStart) || !log.Timestamp.Before(hourEnd) {
 				continue
 			}
 			
-			if log.Target == "primary" && log.PacketLoss != nil {
-				primaryLossSum += *log.PacketLoss
-				primaryCount++
-			} else if log.Target == "secondary" && log.PacketLoss != nil {
-				secondaryLossSum += *log.PacketLoss
-				secondaryCount++
+			if log.Target == "primary" {
+				primarySent += log.PacketsSent
+				primaryReceived += log.PacketsRecv
+			} else if log.Target == "secondary" {
+				secondarySent += log.PacketsSent
+				secondaryReceived += log.PacketsRecv
 			}
 		}
 		
-		if primaryCount > 0 {
-			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
-		} else {
-			primaryPacketLoss = append(primaryPacketLoss, 0)
+		// Calculate success rate as percentage of received vs sent packets
+		var primarySuccessRate, secondarySuccessRate float64
+		if primarySent > 0 {
+			primarySuccessRate = (float64(primaryReceived) / float64(primarySent)) * 100
+		}
+		if secondarySent > 0 {
+			secondarySuccessRate = (float64(secondaryReceived) / float64(secondarySent)) * 100
 		}
 		
-		if secondaryCount > 0 {
-			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
-		} else {
-			secondaryPacketLoss = append(secondaryPacketLoss, 0)
-		}
+		primarySuccess = append(primarySuccess, primarySuccessRate)
+		secondarySuccess = append(secondarySuccess, secondarySuccessRate)
 	}
 	
-	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
+	return filterEmptyBuckets(labels, primarySuccess, secondarySuccess)
 }
 
 // generateJitterChart generates jitter chart data
@@ -1342,10 +1339,10 @@ func generateLatencyChartDaily(allLogs []models.PingLog, siteID string, now time
 	}
 }
 
-// generatePacketLossChartDaily generates packet loss chart data (daily aggregation)
-func generatePacketLossChartDaily(allLogs []models.PingLog, siteID string, now time.Time, days int) ChartDataResult {
+// generatePacketTransmissionChartDaily generates packet transmission success rate data (daily aggregation)
+func generatePacketTransmissionChartDaily(allLogs []models.PingLog, siteID string, now time.Time, days int) ChartDataResult {
 	var labels []string
-	var primaryPacketLoss, secondaryPacketLoss []float64
+	var primarySuccess, secondarySuccess []float64
 	
 	for i := days - 1; i >= 0; i-- {
 		dayStart := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
@@ -1353,37 +1350,36 @@ func generatePacketLossChartDaily(allLogs []models.PingLog, siteID string, now t
 		
 		labels = append(labels, dayStart.Format("Jan 2"))
 		
-		var primaryLossSum, secondaryLossSum float64
-		var primaryCount, secondaryCount int
+		var primarySent, primaryReceived, secondarySent, secondaryReceived int
 		
 		for _, log := range allLogs {
 			if log.SiteID != siteID || log.Timestamp.Before(dayStart) || !log.Timestamp.Before(dayEnd) {
 				continue
 			}
 			
-			if log.Target == "primary" && log.PacketLoss != nil {
-				primaryLossSum += *log.PacketLoss
-				primaryCount++
-			} else if log.Target == "secondary" && log.PacketLoss != nil {
-				secondaryLossSum += *log.PacketLoss
-				secondaryCount++
+			if log.Target == "primary" {
+				primarySent += log.PacketsSent
+				primaryReceived += log.PacketsRecv
+			} else if log.Target == "secondary" {
+				secondarySent += log.PacketsSent
+				secondaryReceived += log.PacketsRecv
 			}
 		}
 		
-		if primaryCount > 0 {
-			primaryPacketLoss = append(primaryPacketLoss, primaryLossSum/float64(primaryCount))
-		} else {
-			primaryPacketLoss = append(primaryPacketLoss, 0)
+		// Calculate success rate as percentage of received vs sent packets
+		var primarySuccessRate, secondarySuccessRate float64
+		if primarySent > 0 {
+			primarySuccessRate = (float64(primaryReceived) / float64(primarySent)) * 100
+		}
+		if secondarySent > 0 {
+			secondarySuccessRate = (float64(secondaryReceived) / float64(secondarySent)) * 100
 		}
 		
-		if secondaryCount > 0 {
-			secondaryPacketLoss = append(secondaryPacketLoss, secondaryLossSum/float64(secondaryCount))
-		} else {
-			secondaryPacketLoss = append(secondaryPacketLoss, 0)
-		}
+		primarySuccess = append(primarySuccess, primarySuccessRate)
+		secondarySuccess = append(secondarySuccess, secondarySuccessRate)
 	}
 	
-	return filterEmptyBuckets(labels, primaryPacketLoss, secondaryPacketLoss)
+	return filterEmptyBuckets(labels, primarySuccess, secondarySuccess)
 }
 
 // generateJitterChartDaily generates jitter chart data (daily aggregation)
@@ -1873,18 +1869,18 @@ func GenerateChartDataForRange(app *config.AppState, siteID, chartType, timeRang
 		// Always return last 24 hours distribution
 		since := now.Add(-24 * time.Hour)
 		return generateDistributionChart(allLogs, siteID, since)
-	case "packet_loss":
+	case "packet_transmission":
 		switch timeRange {
 		case "1h":
-			return generatePacketLossChartMinutely(allLogs, siteID, now, 60) // 60 minute points
+			return generatePacketTransmissionChartMinutely(allLogs, siteID, now, 60) // 60 minute points
 		case "3h":
-			return generatePacketLossChart5Minutes(allLogs, siteID, now, 36) // 36 x 5-minute points
+			return generatePacketTransmissionChart5Minutes(allLogs, siteID, now, 36) // 36 x 5-minute points
 		case "12h":
-			return generatePacketLossChart5Minutes(allLogs, siteID, now, 144) // 144 x 5-minute points
+			return generatePacketTransmissionChart5Minutes(allLogs, siteID, now, 144) // 144 x 5-minute points
 		case "24h":
-			return generatePacketLossChart(allLogs, siteID, now, 24) // 24 hourly points
+			return generatePacketTransmissionChart(allLogs, siteID, now, 24) // 24 hourly points
 		case "7d":
-			return generatePacketLossChartDaily(allLogs, siteID, now, 7) // 7 daily points
+			return generatePacketTransmissionChartDaily(allLogs, siteID, now, 7) // 7 daily points
 		}
 	case "jitter":
 		switch timeRange {

@@ -385,20 +385,20 @@
 
     <!-- Extended Performance Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Packet Loss Chart -->
+        <!-- Packet Transmission Chart -->
         <div class="bg-white p-4 sm:p-6 rounded-lg shadow border">
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
-                <h3 class="text-lg font-semibold text-gray-900">Packet Loss</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Packet Transmission Success</h3>
                 <div class="flex space-x-1">
-                    <button class="time-range-btn" data-chart="packet_loss" data-range="1h">1h</button>
-                    <button class="time-range-btn" data-chart="packet_loss" data-range="3h">3h</button>
-                    <button class="time-range-btn" data-chart="packet_loss" data-range="12h">12h</button>
-                    <button class="time-range-btn active" data-chart="packet_loss" data-range="24h">24h</button>
-                    <button class="time-range-btn" data-chart="packet_loss" data-range="7d">7d</button>
+                    <button class="time-range-btn" data-chart="packet_transmission" data-range="1h">1h</button>
+                    <button class="time-range-btn" data-chart="packet_transmission" data-range="3h">3h</button>
+                    <button class="time-range-btn" data-chart="packet_transmission" data-range="12h">12h</button>
+                    <button class="time-range-btn active" data-chart="packet_transmission" data-range="24h">24h</button>
+                    <button class="time-range-btn" data-chart="packet_transmission" data-range="7d">7d</button>
                 </div>
             </div>
             <div class="h-64 relative">
-                <canvas id="packetLossChart" class="w-full h-full border rounded"></canvas>
+                <canvas id="packetTransmissionChart" class="w-full h-full border rounded"></canvas>
             </div>
         </div>
 
@@ -742,7 +742,7 @@ window.chartTimeRanges = {
     uptime: '7d', 
     yearly: '12m',
     distribution: '24h',
-    packet_loss: '24h',
+    packet_transmission: '24h',
     jitter: '24h'
 };
 
@@ -808,7 +808,7 @@ function updateChartWithServerData(chartType, range) {
             chart.data.labels = data.Labels || ['No Data'];
             
             // Update datasets based on chart type
-            if (chartType === 'latency' || chartType === 'yearly' || chartType === 'packet_loss' || chartType === 'jitter') {
+            if (chartType === 'latency' || chartType === 'yearly' || chartType === 'packet_transmission' || chartType === 'jitter') {
                 // Line charts
                 if (data.PrimaryData && data.PrimaryData.length > 0) {
                     chart.data.datasets[0].data = data.PrimaryData;
@@ -1060,14 +1060,89 @@ window.initializeEnhancedCharts = function() {
             maintainAspectRatio: false,
             plugins: {
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(59, 130, 246, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
                     callbacks: {
+                        title: function(context) {
+                            const timeRange = window.chartTimeRanges.latency;
+                            const now = new Date();
+                            const timeLabel = context[0].label;
+                            
+                            let timestamp;
+                            if (timeRange === '24h') {
+                                const [hours, minutes] = timeLabel.split(':').map(Number);
+                                timestamp = new Date(now);
+                                timestamp.setHours(hours || 0, minutes || 0, 0, 0);
+                            } else if (timeRange === '7d') {
+                                timestamp = new Date(timeLabel);
+                            } else {
+                                timestamp = now;
+                            }
+                            
+                            return `${timeLabel} (${timestamp.toLocaleDateString()})`;
+                        },
+                        afterBody: function(context) {
+                            if (context.length > 1) {
+                                const values = context.map(c => c.parsed.y).filter(v => v != null && !isNaN(v));
+                                if (values.length > 1) {
+                                    const best = Math.min(...values);
+                                    const worst = Math.max(...values);
+                                    const bestProvider = context.find(c => c.parsed.y === best)?.dataset.label;
+                                    const delta = worst - best;
+                                    
+                                    if (delta > 0) {
+                                        return `\n🚀 Fastest: ${bestProvider} (-${delta.toFixed(1)}ms)`;
+                                    }
+                                }
+                            }
+                            return '';
+                        },
                         label: function(context) {
                             const label = context.dataset.label || '';
                             const value = context.parsed.y;
+                            
                             if (value == null || isNaN(value)) {
-                                return `${label}: No Data`;
+                                return `${label}: No Data Available`;
                             }
-                            return `${label}: ${value.toFixed(2)}ms`;
+                            
+                            // Latency quality assessment
+                            let quality, emoji, description;
+                            if (value <= 10) {
+                                quality = 'Excellent';
+                                emoji = '🚀';
+                                description = 'Very fast response';
+                            } else if (value <= 20) {
+                                quality = 'Very Good';
+                                emoji = '✅';
+                                description = 'Fast response';
+                            } else if (value <= 50) {
+                                quality = 'Good';
+                                emoji = '🟢';
+                                description = 'Acceptable response';
+                            } else if (value <= 100) {
+                                quality = 'Fair';
+                                emoji = '🟡';
+                                description = 'Noticeable delay';
+                            } else if (value <= 200) {
+                                quality = 'Poor';
+                                emoji = '🟠';
+                                description = 'High latency';
+                            } else {
+                                quality = 'Critical';
+                                emoji = '🔴';
+                                description = 'Very high latency';
+                            }
+                            
+                            return [
+                                `${emoji} ${label}: ${value.toFixed(1)}ms (${quality})`,
+                                `⚡ ${description}`,
+                                `🎯 Round-trip time measurement`
+                            ];
                         }
                     }
                 },
@@ -1732,86 +1807,185 @@ window.initializeEnhancedCharts = function() {
         }
     });
 
-    // Packet Loss Chart
+    // Packet Transmission Chart
     try {
-        console.log('🔧 Creating packet loss chart...');
-        const packetLossCtx = document.getElementById('packetLossChart');
-        if (!packetLossCtx) {
-            console.error('❌ Could not find packetLossChart canvas element');
+        console.log('🔧 Creating packet transmission chart...');
+        const packetTransmissionCtx = document.getElementById('packetTransmissionChart');
+        if (!packetTransmissionCtx) {
+            console.error('❌ Could not find packetTransmissionChart canvas element');
         } else {
-            const ctx = packetLossCtx.getContext('2d');
-            let packetLossPrimary, packetLossSecondary, packetLossLabels;
+            const ctx = packetTransmissionCtx.getContext('2d');
+            let packetTransmissionPrimary, packetTransmissionSecondary, packetTransmissionLabels;
             try {
-                packetLossPrimary = JSON.parse('{{.PacketLossChartDataPrimary}}' || '[]');
-                packetLossSecondary = JSON.parse('{{.PacketLossChartDataSecondary}}' || '[]');
-                packetLossLabels = JSON.parse('{{.PacketLossChartLabels}}' || '[]');
-                console.log('📊 Packet loss data loaded:', {
-                    primary: packetLossPrimary.length,
-                    secondary: packetLossSecondary.length,
-                    labels: packetLossLabels.length
+                packetTransmissionPrimary = JSON.parse('{{.PacketLossChartDataPrimary}}' || '[]');
+                packetTransmissionSecondary = JSON.parse('{{.PacketLossChartDataSecondary}}' || '[]');
+                packetTransmissionLabels = JSON.parse('{{.PacketLossChartLabels}}' || '[]');
+                console.log('📊 Packet transmission data loaded:', {
+                    primary: packetTransmissionPrimary.length,
+                    secondary: packetTransmissionSecondary.length,
+                    labels: packetTransmissionLabels.length
                 });
             } catch (e) {
-                console.warn('Failed to parse packet loss data:', e);
-                packetLossPrimary = [];
-                packetLossSecondary = [];
-                packetLossLabels = [];
+                console.warn('Failed to parse packet transmission data:', e);
+                packetTransmissionPrimary = [];
+                packetTransmissionSecondary = [];
+                packetTransmissionLabels = [];
             }
 
-            const packetLossDatasets = [];
-            if (packetLossPrimary.length > 0) {
-                packetLossDatasets.push({
+            const packetTransmissionDatasets = [];
+            if (packetTransmissionPrimary.length > 0) {
+                packetTransmissionDatasets.push({
                     label: '{{if .Site.PrimaryProvider}}{{.Site.PrimaryProvider}}{{else}}Primary{{end}}',
-                    data: packetLossPrimary,
-                    borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4
+                    data: packetTransmissionPrimary,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.4,
+                    fill: false
                 });
             }
             
             {{if .Site.SecondaryIP}}
-            if (packetLossSecondary.length > 0) {
-                packetLossDatasets.push({
+            if (packetTransmissionSecondary.length > 0) {
+                packetTransmissionDatasets.push({
                     label: '{{if .Site.SecondaryProvider}}{{.Site.SecondaryProvider}}{{else}}Secondary{{end}}',
-                    data: packetLossSecondary,
-                    borderColor: 'rgb(16, 185, 129)',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4
+                    data: packetTransmissionSecondary,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: false
                 });
             }
             {{end}}
 
-            window.siteWatchCharts.packet_loss = new Chart(ctx, {
+            window.siteWatchCharts.packet_transmission = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: packetLossLabels.length > 0 ? packetLossLabels : ['No Data'],
-            datasets: packetLossDatasets
+            labels: packetTransmissionLabels.length > 0 ? packetTransmissionLabels : ['No Data'],
+            datasets: packetTransmissionDatasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(34, 197, 94, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
                     callbacks: {
+                        title: function(context) {
+                            const timeRange = window.chartTimeRanges.packet_transmission;
+                            const now = new Date();
+                            const timeLabel = context[0].label;
+                            
+                            let timestamp;
+                            if (timeRange === '24h') {
+                                // Parse time format like "08:00"
+                                const [hours, minutes] = timeLabel.split(':').map(Number);
+                                timestamp = new Date(now);
+                                timestamp.setHours(hours || 0, minutes || 0, 0, 0);
+                            } else if (timeRange === '7d') {
+                                // Day format
+                                timestamp = new Date(timeLabel);
+                            } else {
+                                timestamp = now;
+                            }
+                            
+                            return `${timeLabel} (${timestamp.toLocaleDateString()})`;
+                        },
+                        afterBody: function(context) {
+                            if (context.length > 1) {
+                                // Calculate difference between providers
+                                const values = context.map(c => c.parsed.y);
+                                const best = Math.max(...values);
+                                const worst = Math.min(...values);
+                                const bestProvider = context.find(c => c.parsed.y === best)?.dataset.label;
+                                const delta = best - worst;
+                                
+                                if (delta > 0) {
+                                    return `\n🏆 Best: ${bestProvider} (+${delta.toFixed(1)}%)`;
+                                }
+                            }
+                            return '';
+                        },
                         label: function(context) {
                             const label = context.dataset.label || '';
                             const value = context.parsed.y;
-                            return `${label}: ${value.toFixed(2)}% loss`;
+                            
+                            // Status assessment
+                            let status, emoji, advice;
+                            if (value >= 99.5) {
+                                status = 'Excellent';
+                                emoji = '✅';
+                                advice = 'Perfect transmission';
+                            } else if (value >= 98) {
+                                status = 'Very Good';
+                                emoji = '🟢';
+                                advice = 'Minimal packet loss';
+                            } else if (value >= 95) {
+                                status = 'Good';
+                                emoji = '🟡';
+                                advice = 'Some packets lost';
+                            } else if (value >= 90) {
+                                status = 'Degraded';
+                                emoji = '🟠';
+                                advice = 'Noticeable packet loss';
+                            } else if (value >= 80) {
+                                status = 'Poor';
+                                emoji = '🔴';
+                                advice = 'Significant issues';
+                            } else {
+                                status = 'Critical';
+                                emoji = '❌';
+                                advice = 'Major connectivity problems';
+                            }
+                            
+                            // Calculate estimated packets
+                            const estimatedSent = Math.round((100 / value) * 3); // Assuming 3 packets per ping
+                            const estimatedReceived = Math.round((value / 100) * estimatedSent);
+                            const estimatedLost = estimatedSent - estimatedReceived;
+                            
+                            return [
+                                `${emoji} ${label}: ${value.toFixed(1)}% (${status})`,
+                                `📦 Est. packets: ${estimatedReceived}/${estimatedSent} received`,
+                                estimatedLost > 0 ? `💔 Est. lost: ${estimatedLost} packets` : '💚 No packets lost',
+                                `💡 ${advice}`
+                            ];
                         }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
                     }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
+                    max: 100,
                     title: {
                         display: true,
-                        text: 'Packet Loss (%)'
+                        text: 'Transmission Success Rate (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
                     }
                 },
                 x: {
                     title: {
                         display: true,
                         text: 'Time'
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
@@ -1819,7 +1993,7 @@ window.initializeEnhancedCharts = function() {
     });
         }
     } catch (e) {
-        console.error('❌ Error creating packet loss chart:', e);
+        console.error('❌ Error creating packet transmission chart:', e);
     }
 
     // API calls will be made after ALL charts are created
@@ -1878,11 +2052,89 @@ window.initializeEnhancedCharts = function() {
             maintainAspectRatio: false,
             plugins: {
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(139, 92, 246, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
                     callbacks: {
+                        title: function(context) {
+                            const timeRange = window.chartTimeRanges.jitter;
+                            const now = new Date();
+                            const timeLabel = context[0].label;
+                            
+                            let timestamp;
+                            if (timeRange === '24h') {
+                                const [hours, minutes] = timeLabel.split(':').map(Number);
+                                timestamp = new Date(now);
+                                timestamp.setHours(hours || 0, minutes || 0, 0, 0);
+                            } else if (timeRange === '7d') {
+                                timestamp = new Date(timeLabel);
+                            } else {
+                                timestamp = now;
+                            }
+                            
+                            return `${timeLabel} (${timestamp.toLocaleDateString()})`;
+                        },
+                        afterBody: function(context) {
+                            if (context.length > 1) {
+                                const values = context.map(c => c.parsed.y).filter(v => v != null && !isNaN(v));
+                                if (values.length > 1) {
+                                    const best = Math.min(...values);
+                                    const worst = Math.max(...values);
+                                    const bestProvider = context.find(c => c.parsed.y === best)?.dataset.label;
+                                    const delta = worst - best;
+                                    
+                                    if (delta > 0) {
+                                        return `\n📈 Most Stable: ${bestProvider} (-${delta.toFixed(1)}ms jitter)`;
+                                    }
+                                }
+                            }
+                            return '';
+                        },
                         label: function(context) {
                             const label = context.dataset.label || '';
                             const value = context.parsed.y;
-                            return `${label}: ${value.toFixed(2)}ms jitter`;
+                            
+                            if (value == null || isNaN(value)) {
+                                return `${label}: No Jitter Data`;
+                            }
+                            
+                            // Jitter stability assessment
+                            let stability, emoji, impact;
+                            if (value <= 1) {
+                                stability = 'Excellent';
+                                emoji = '💎';
+                                impact = 'Crystal clear connection';
+                            } else if (value <= 3) {
+                                stability = 'Very Good';
+                                emoji = '✅';
+                                impact = 'Very stable connection';
+                            } else if (value <= 5) {
+                                stability = 'Good';
+                                emoji = '🟢';
+                                impact = 'Stable connection';
+                            } else if (value <= 10) {
+                                stability = 'Fair';
+                                emoji = '🟡';
+                                impact = 'Minor variations';
+                            } else if (value <= 20) {
+                                stability = 'Poor';
+                                emoji = '🟠';
+                                impact = 'Noticeable instability';
+                            } else {
+                                stability = 'Critical';
+                                emoji = '🔴';
+                                impact = 'Very unstable connection';
+                            }
+                            
+                            return [
+                                `${emoji} ${label}: ${value.toFixed(1)}ms (${stability})`,
+                                `🌊 ${impact}`,
+                                `📊 Network consistency measure`
+                            ];
                         }
                     }
                 }

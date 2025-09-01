@@ -203,12 +203,12 @@ func HandleUIEnhancedFragment(c *fiber.Ctx) error {
 	// Generate initial chart data using the same API as the button clicks
 	// Use 24h as default for consistent behavior with button "24h" being active
 	latencyChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "latency", "24h")
-	packetLossChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "packet_loss", "24h")
+	packetTransmissionChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "packet_transmission", "24h")
 	jitterChartData := stats.GenerateChartDataForRange(config.GlobalAppState, siteID, "jitter", "24h")
 	
 	// Convert chart data to JSON strings for templates
 	var latencyLabelsJSON, latencyPrimaryJSON, latencySecondaryJSON []byte
-	var packetLossLabelsJSON, packetLossPrimaryJSON, packetLossSecondaryJSON []byte  
+	var packetTransmissionLabelsJSON, packetTransmissionPrimaryJSON, packetTransmissionSecondaryJSON []byte  
 	var jitterLabelsJSON, jitterPrimaryJSON, jitterSecondaryJSON []byte
 	
 	// Handle latency chart data
@@ -223,16 +223,16 @@ func HandleUIEnhancedFragment(c *fiber.Ctx) error {
 		latencySecondaryJSON, _ = json.Marshal(chartData.LatencyChartDataSecondary)
 	}
 	
-	// Handle packet loss chart data
-	if packetLossResult, ok := packetLossChartData.(stats.ChartDataResult); ok {
-		packetLossLabelsJSON, _ = json.Marshal(packetLossResult.Labels)
-		packetLossPrimaryJSON, _ = json.Marshal(packetLossResult.PrimaryData)
-		packetLossSecondaryJSON, _ = json.Marshal(packetLossResult.SecondaryData)
+	// Handle packet transmission chart data
+	if packetTransmissionResult, ok := packetTransmissionChartData.(stats.ChartDataResult); ok {
+		packetTransmissionLabelsJSON, _ = json.Marshal(packetTransmissionResult.Labels)
+		packetTransmissionPrimaryJSON, _ = json.Marshal(packetTransmissionResult.PrimaryData)
+		packetTransmissionSecondaryJSON, _ = json.Marshal(packetTransmissionResult.SecondaryData)
 	} else {
 		// Fallback to old method
-		packetLossLabelsJSON, _ = json.Marshal(chartData.PacketLossChartLabels)
-		packetLossPrimaryJSON, _ = json.Marshal(chartData.PacketLossChartDataPrimary)
-		packetLossSecondaryJSON, _ = json.Marshal(chartData.PacketLossChartDataSecondary)
+		packetTransmissionLabelsJSON, _ = json.Marshal(chartData.PacketLossChartLabels)
+		packetTransmissionPrimaryJSON, _ = json.Marshal(chartData.PacketLossChartDataPrimary)
+		packetTransmissionSecondaryJSON, _ = json.Marshal(chartData.PacketLossChartDataSecondary)
 	}
 	
 	// Handle jitter chart data
@@ -297,9 +297,9 @@ func HandleUIEnhancedFragment(c *fiber.Ctx) error {
 		"DistributionPrimaryData":   string(distributionPrimaryJSON),
 		"DistributionSecondaryData": string(distributionSecondaryJSON),
 		// Extended ping data for templates
-		"PacketLossChartLabels":        string(packetLossLabelsJSON),
-		"PacketLossChartDataPrimary":   string(packetLossPrimaryJSON),
-		"PacketLossChartDataSecondary": string(packetLossSecondaryJSON),
+		"PacketLossChartLabels":        string(packetTransmissionLabelsJSON),
+		"PacketLossChartDataPrimary":   string(packetTransmissionPrimaryJSON),
+		"PacketLossChartDataSecondary": string(packetTransmissionSecondaryJSON),
 		"JitterChartLabels":            string(jitterLabelsJSON),
 		"JitterChartDataPrimary":       string(jitterPrimaryJSON),
 		"JitterChartDataSecondary":     string(jitterSecondaryJSON),
